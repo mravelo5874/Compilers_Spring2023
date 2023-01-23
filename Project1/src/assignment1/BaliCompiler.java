@@ -6,8 +6,12 @@ import edu.cornell.cs.sam.io.Tokenizer;
 import edu.cornell.cs.sam.io.TokenizerException;
 import edu.cornell.cs.sam.io.Tokenizer.TokenType;
 
+import java.util.regex.Pattern;
+
 public class BaliCompiler 
 {
+    static boolean PRINT_COMPLILE = false;
+
     public static void main(String[] args)
     {
         String input_file;
@@ -18,13 +22,16 @@ public class BaliCompiler
         }
         else
         {
-            input_file = "test5.bali";
+            input_file = "test10.bali";
         }
 
         System.out.println("input_file: " + input_file);
+        System.out.println("Starting compiler...");
         String SaM_code = compiler("testcases/" + input_file);
+        System.out.println("Compiler completed with no problems.");
         System.out.println("SaM_code: " + SaM_code);
     }
+
 
     static String generateMsg(SamTokenizer f)
     {
@@ -56,9 +63,11 @@ public class BaliCompiler
                 problemStr += f.getComment();
                 break;
         }
+        f.pushBack();
         return problemStr;
     }
     
+
     static String compiler(String fileName) 
     {
         // returns SaM code for program in file
@@ -80,88 +89,150 @@ public class BaliCompiler
         }
     }
 
+
     static String getPROGRAM(SamTokenizer f) 
     {
+        if (PRINT_COMPLILE) System.out.println("[PROGRAM start]");
+        // PROGRAM -> METH_DECL*
+    
         try 
         {
             String pgm = "";
             while (f.peekAtKind() != TokenType.EOF)
-                pgm += getMETHOD(f);
+            {
+                pgm += getMETHOD_DECLARATION(f);
+            }
             return pgm;
         } 
         catch (TokenizerException te)
         {
-            System.out.println("[TOKEN PARSE ERROR] " + te.toString());
+            if (PRINT_COMPLILE) System.out.println("[TOKEN PARSE ERROR] " + te.toString());
             return "STOP\n";
         }
     }
 
-    static String getMETHOD(SamTokenizer f) 
+
+    static String getMETHOD_DECLARATION(SamTokenizer f) 
     {
-        // add code to convert a method declaration to SaM code.
-        // add appropriate exception handlers to generate useful error msgs.
+        if (PRINT_COMPLILE) System.out.println("[METH_DECL start]");
+        // METH_DECL -> TYPE ID '(' FORMALS? ')' BODY
 
-        String method = "[METH:";
+        String method_declaration_str= "";
 
-
-        f.check("int"); // [TYPE] -> "int"
-        String method_id = f.getWord(); // [ID] -> method id
-        method += method_id + "]";
-        f.check('('); // '('
+        f.match("int");
+        String method_id = f.getWord();
+        if (PRINT_COMPLILE) System.out.println("\t[ID] (" + method_id + ")");
+        f.match('(');
 
         // [FORMALS]? skip formals if parenthesis are empty
         if (!f.check(')'))
         {
             String formals = getFORMALS(f); 
-            if (formals != "")
+            f.match(')');
+        }
+        String body_str = getBODY(f);
+
+        if (PRINT_COMPLILE) System.out.println("[METH_DECL end]");
+        return method_declaration_str;
+    }
+
+    static String getFORMALS(SamTokenizer f) 
+    {
+        if (PRINT_COMPLILE) System.out.println("[FORMALS start]");
+        // FORMALS -> TYPE ID (',' TYPE ID)*
+
+        String formals_str = "";
+
+        f.check("int");
+        String formal_id = f.getWord();
+        if (PRINT_COMPLILE) System.out.println("\t[ID] (" + formal_id + ")");
+
+        // recursive getFormals() iff ',' present 
+        if (f.check(','))
+        {
+            formals_str += getFORMALS(f);
+        }
+        
+        if (PRINT_COMPLILE) System.out.println("[FORMALS end]");
+        return formals_str;
+    }
+
+
+    static String getBODY(SamTokenizer f)
+    {
+        if (PRINT_COMPLILE) System.out.println("[BODY start]");
+        // BODY -> '{' VAR_DECL* STMT* '}'
+
+        String body_str = "";
+
+        f.match('{');
+        if (f.check("int"))
+        {
+            String var_del_str = getVAR_DECL(f);
+        }
+        if (!f.check('}'))
+        {
+            while (!f.check('}'))
             {
-                method += "[FORMALS]" + formals;
+                String stmt_str = getSTMT(f);
             }
-            f.check(")"); // ')'
         }
 
-        System.out.println("[PEEK]: " + generateMsg(f));
-
-        // [BODY]
-        f.check('{'); // '{'
-
-        // [VAR_DECL]* 
-        String var_del = getVARDECL(f);
-        
-
-        // [STMT]*
-        String stmt = getSTMT(f);
-
-        f.check('}'); // '}'
-        
-        // You would need to read in formals if any
-        // And then have calls to getDeclarations and getStatements.
-        return method;
+        if (PRINT_COMPLILE) System.out.println("[BODY end]");
+        return body_str;
     }
+
+
+    static String getVAR_DECL(SamTokenizer f)
+    {
+        if (PRINT_COMPLILE) System.out.println("[VAR_DECL start]");
+        // VAR_DECL -> TYPE ID ('=' EXP)? (',' ID ('=' EXP)?)* ';'
+        String var_decl_str = "";
+
+        String var_id = f.getWord();
+        if (PRINT_COMPLILE) System.out.println("\t[ID] (" + var_id + ")");
+
+        // ('=' [EXP])?
+        if (f.check('='))
+        {
+            getEXP(f);
+        }
+        // (',' [ID] ('=' [EXP])?)*
+        while (f.check(','))
+        {
+            var_id = f.getWord(); // [ID] -> var id
+            if (PRINT_COMPLILE) System.out.println("\t[ID] (" + var_id + ")");
+            if (f.check('='))
+            {
+                getEXP(f);
+            }
+        }
+        f.match(';'); // ';'
+
+        if (PRINT_COMPLILE) System.out.println("[VAR_DECL end]");
+        return var_decl_str;
+    }
+
 
     static String getSTMT(SamTokenizer f)
     {
+        if (PRINT_COMPLILE) System.out.println("[STMT start]");
         String stmt = "";
+
+        // System.out.println("[LOOK] " + generateMsg(f));
+        // System.out.println("[PEEK] " + f.peekAtKind());
         
         switch (f.peekAtKind())
         {
-            // [ASSIGN] -> [LOCATION] '=' [EXP]
             case WORD:
             {
-                String location_id = f.getWord(); // [ID] -> location id
-                f.check('=');
-                getEXP(f);
-                f.check(';');
-                break;
-            }
-            case STRING:
-            {
-                String str = f.getString();
-                switch (str)
+                String word_id = f.getWord();
+                switch (word_id)
                 {
                     // "return" [EXP] ';'
                     case "return":
                     {
+                        if (PRINT_COMPLILE) System.out.println("[KEYWORD] (return)");
                         getEXP(f);
                         f.check(';');
                         break;
@@ -169,6 +240,7 @@ public class BaliCompiler
                     // "if" '(' [EXP] ')' [STMT] "else" [STMT]
                     case "if":
                     {
+                        if (PRINT_COMPLILE) System.out.println("[KEYWORD] (if)");
                         f.check('(');
                         getEXP(f);
                         f.check(')');
@@ -180,6 +252,7 @@ public class BaliCompiler
                     // "while" '(' [EXP] ')' [STMT]
                     case "while":
                     {
+                        if (PRINT_COMPLILE) System.out.println("[KEYWORD] (while)");
                         f.check('(');
                         getEXP(f);
                         f.check(')');
@@ -189,7 +262,20 @@ public class BaliCompiler
                     // "break" ';'
                     case "break":
                     {
+                        if (PRINT_COMPLILE) System.out.println("[KEYWORD] (break)");
                         f.check(';');
+                        break;
+                    }
+                    default:
+                    {
+                        if (isID(word_id))
+                        {
+                            if (PRINT_COMPLILE) System.out.println("[ASSIGN]");
+                            if (PRINT_COMPLILE) System.out.println("\t[ID] (" + word_id + ")");
+                            f.check('=');
+                            getEXP(f);
+                            f.check(';');
+                        }
                         break;
                     }
                 }
@@ -197,12 +283,13 @@ public class BaliCompiler
             }
             case OPERATOR:
             {
-                Character c = f.getCharacter();
+                Character c = f.getOp();
                 switch (c)
                 {
                     // [BLOCK] -> '{' [STMT]* '}'
                     case '{':
                     {
+                        if (PRINT_COMPLILE) System.out.println("[BLOCK]");
                         while (!f.check('}'))
                         {
                             getSTMT(f);
@@ -217,65 +304,126 @@ public class BaliCompiler
                 break;
             }
         }
-
+        
+        if (PRINT_COMPLILE) System.out.println("[STMT end]");
         return stmt;
     }
 
-    static String getVARDECL(SamTokenizer f)
+    
+    static String getEXP(SamTokenizer f) 
     {
-        String var_decl = "";
+        if (PRINT_COMPLILE) System.out.println("[EXP start]");
+        String exp_str = "";
 
-        f.check("int"); // [TYPE] -> "int"
-        String var_id = f.getWord(); // [ID] -> var id
+        switch (f.peekAtKind()) 
+        {
+            case INTEGER:
+            {
+                int i = f.getInt();
+                if (PRINT_COMPLILE) System.out.println("\t[LITERAL] (" + i + ")");
+                break;
+            }
+            case WORD:
+            {
+                String word_str = f.getWord();
 
-        // ('=' [EXP])?
-        if (f.check('='))
+                // [METHOD] or [LOCATION]
+                if (isID(word_str))
+                {       
+                    // [METHOD] '(' ACTUALS? ')'   
+                    if (f.check('('))
+                    {
+                        if (PRINT_COMPLILE) System.out.println("[METHOD]");
+                        if (PRINT_COMPLILE) System.out.println("\t[ID] (" + word_str + ")");
+                        if (!f.check(')'))
+                        {
+                            String actuals_str = getACTUALS(f);
+                            f.match(')');
+                        }
+                    }
+                    // [LOCATION] -> [ID]
+                    else
+                    {
+                        if (PRINT_COMPLILE) System.out.println("[LOCATION]");
+                        if (PRINT_COMPLILE) System.out.println("\t[ID] (" + word_str + ")");
+                    }     
+                }
+                // [LITERAL] -> [INT] | "true" | "false"
+                else if (word_str == "true" || word_str == "false")
+                {
+                    if (PRINT_COMPLILE) System.out.println("\t[LITERAL] (" + word_str + ")");
+                }
+                break;
+            }
+            case OPERATOR:
+            {
+                f.match('(');
+
+                if (f.check('-'))
+                {
+                    String str = getEXP(f);
+                    break;
+                }
+                else if (f.check('!'))
+                {
+                    String str = getEXP(f);
+                    break;
+                }
+                else
+                {
+                    String str1 = getEXP(f);
+                    Character c = f.getOp();
+                    switch (c)
+                    {
+                        case '+':
+                        case '-':
+                        case '*':
+                        case '/':
+                        case '&':
+                        case '|':
+                        case '<':
+                        case '>':
+                        case '=':
+                        if (PRINT_COMPLILE) System.out.println("[OPERATOR] (" + c + ")");
+                            break;
+                    }
+
+                    String str2 = getEXP(f);
+                }
+
+                f.match(')');
+            }
+        }
+
+        if (PRINT_COMPLILE) System.out.println("[EXP end]");
+        return exp_str;
+    }
+
+    static String getACTUALS(SamTokenizer f)
+    {
+        if (PRINT_COMPLILE) System.out.println("[ACTUALS start]");
+        // ACTUALS -> EXP (',' EXP)*
+        String actuals_str = "";
+
+        getEXP(f);
+        if (f.check(','))
         {
             getEXP(f);
         }
-        // (',' [ID] ('=' [EXP])?)*
-        while (f.check(','))
-        {
-            var_id = f.getWord(); // [ID] -> var id
-            if (f.check('='))
-            {
-                getEXP(f);
-            }
-        }
-        
-        f.check(';'); // ';'
 
-        return var_decl;
+        if (PRINT_COMPLILE) System.out.println("[ACTUALS end]");
+        return actuals_str;
     }
 
-    static String getEXP(SamTokenizer f) 
-    {
-        switch (f.peekAtKind()) 
-        {
-            case INTEGER: // E -> integer
-                return "PUSHIMM " + f.getInt() + "\n";
-            case OPERATOR: 
-            {
 
-            }
-            default:
-                return "ERROR\n";
-        }
+    static boolean isINT(String str)
+    {
+        return Pattern.matches("[0-9]+", str);
     }
 
-    static String getFORMALS(SamTokenizer f) 
+
+    static boolean isID(String str)
     {
-        String formals = "";
-
-        f.check("int"); // [TYPE] -> "int"
-
-        String formal_id = f.getWord(); // [ID] -> formal id
-        formals += "[INT][ID:" + formal_id + "]";
-        // recursive getFormals() iff ',' present 
-        if (f.check(','))
-        {
-            formals += getFORMALS(f);
-        }
-        return formals;
+        return Pattern.matches("[a-zA-Z]([a-zA-Z]|[0-9]|_)*$", str);
     }
 }
