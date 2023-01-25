@@ -4,35 +4,99 @@ import edu.cornell.cs.sam.io.SamTokenizer;
 import edu.cornell.cs.sam.io.TokenizerException;
 import edu.cornell.cs.sam.io.Tokenizer.TokenType;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.regex.Pattern;
+import java.io.FileWriter;
+import java.util.Arrays;
+import java.util.List;
 
 public class BaliCompiler 
 {
     static boolean PRINT_COMPLILE = false;
+    static boolean TRY_ALL_TESTCASES = false;
+    static List<Boolean> test_case_exp = Arrays.asList(
+        false, false, false, true, true, true, true, true, true, true, false, false, false, true, true, true, true);
+    static List<String> test_cases = Arrays.asList(
+        "testcases/test1.bali", 
+        "testcases/test2.bali",
+        "testcases/test3.bali",
+        "testcases/test4.bali",
+        "testcases/test5.bali",
+        "testcases/test6.bali",
+        "testcases/test7.bali",
+        "testcases/test8.bali",
+        "testcases/test9.bali",
+        "testcases/test10.bali",
+        "examples/bad.exp-as-param.bali",
+        "examples/bad.expr-1.bali",
+        "examples/bad.expr-2.bali",
+        "examples/good.break.bali",
+        "examples/good.expr-1.bali",
+        "examples/good.exprs.bali",
+        "examples/good.two-methods.bali");
 
     public static void main(String[] args)
     {
+        // get input and output file names
         String input_file;
-
-        if (args.length > 0)
+        String output_file;
+        if (args.length > 1)
         {
             input_file = args[0];
+            output_file = args[1];
         }
         else
         {
-            input_file = "test1.bali";
+            input_file = "testcases/test4.bali";
+            output_file = "output.sam";
         }
 
-        System.out.println("input_file: " + input_file);
+        // dev: try all test cases
+        if (TRY_ALL_TESTCASES)
+        {
+            test_and_report();
+            return;
+        }
+
+        // normal compilation
+        compile(input_file, output_file);
+    }
+
+
+    static void test_and_report()
+    {
+        int total_testcases = test_cases.size();
+        int successful = 0;
+        // iterate through each test case and attempt to run compile()
+        for (int i = 0; i < total_testcases; i++)
+        {
+            if (compile(test_cases.get(i), "output.sam") == test_case_exp.get(i))
+            {
+                successful++;
+                System.out.println("[Test case " + (i+1) + " returned expected result]\n");
+            }
+            else
+            {
+                System.out.println("[Test case " + (i+1) + " errored out]\n");
+            }
+        }
+        System.out.println("Successfully completed " + successful + "/" + total_testcases + " testcases.");
+    }
+
+
+    static Boolean compile(String file_name, String output_file)
+    {
+        System.out.println("input_file: " + file_name);
         System.out.println("Starting compiler...");
         try 
         {
-            SamTokenizer f = new SamTokenizer("testcases/" + input_file);
+            SamTokenizer f = new SamTokenizer(file_name);
             String program = getPROGRAM(f);
             System.out.println("Compiler completed with no problems.");
-            System.out.println("SaM_code: " + program);
+            //System.out.println("SaM_code: " + program);
+            System.out.println("Writing to output file...");
+            write_to_file(output_file, program);
+            return true; // return true if program compiled correctly
         } 
         catch (TokenizerException te)
         {
@@ -46,8 +110,22 @@ public class BaliCompiler
         {
             System.out.println("[Exception] " + e.getMessage());
         }
+        return false; // return false if program errored out
     }
 
+    static void write_to_file(String file_name, String data)
+    {
+        try
+        {
+            FileWriter file = new FileWriter(file_name);
+            file.write(data);
+            file.close();
+        }
+        catch (Exception e)
+        {
+            System.out.println("[Exception] " + e.toString());
+        }
+    }
 
     static String peep_value(SamTokenizer f)
     {
@@ -83,29 +161,32 @@ public class BaliCompiler
         return problemStr;
     }
 
+
     static String getPROGRAM(SamTokenizer f) 
     {
-        if (PRINT_COMPLILE) { System.out.println("[PROGRAM start]"); }
         // PROGRAM -> METH_DECL*
+        if (PRINT_COMPLILE) { System.out.println("[PROGRAM start]"); }
     
         String pgm = "";
         while (f.peekAtKind() != TokenType.EOF)
         {
             pgm += getMETHOD_DECLARATION(f);
         }
+        pgm += "STOP\n";
         return pgm;
     }
 
 
     static String getMETHOD_DECLARATION(SamTokenizer f) 
     {
-        if (PRINT_COMPLILE) { System.out.println("[METH_DECL start]"); }
         // METH_DECL -> TYPE ID '(' FORMALS? ')' BODY
-
+        if (PRINT_COMPLILE) { System.out.println("<METH_DECL start"); }
+        
         String method_declaration_str= "";
 
         f.match("int");
         String method_id = f.getWord();
+        method_declaration_str += "METHOD " + method_id + "\n";
         if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + method_id + ")"); }
         f.match('(');
         if (PRINT_COMPLILE) { System.out.println("\t[ ( ]"); }
@@ -115,23 +196,27 @@ public class BaliCompiler
         {
             String formals = getFORMALS(f); 
             f.match(')');
+            method_declaration_str += formals;
         }
         if (PRINT_COMPLILE) { System.out.println("\t[ ) ]"); }
         String body_str = getBODY(f);
+        method_declaration_str += body_str;
 
-        if (PRINT_COMPLILE) { System.out.println("[METH_DECL end]"); }
+        if (PRINT_COMPLILE) { System.out.println("METH_DECL end>"); }
         return method_declaration_str;
     }
 
+
     static String getFORMALS(SamTokenizer f) 
     {
-        if (PRINT_COMPLILE) { System.out.println("[FORMALS start]"); }
         // FORMALS -> TYPE ID (',' TYPE ID)*
+        if (PRINT_COMPLILE) { System.out.println("<FORMALS start]"); }
 
         String formals_str = "";
 
         f.check("int");
         String formal_id = f.getWord();
+        formals_str += "FORMAL " + formal_id + "\n";
         if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + formal_id + ")"); }
 
         // recursive getFormals() iff ',' present 
@@ -140,15 +225,15 @@ public class BaliCompiler
             formals_str += getFORMALS(f);
         }
         
-        if (PRINT_COMPLILE) { System.out.println("[FORMALS end]"); }
+        if (PRINT_COMPLILE) { System.out.println("FORMALS end>"); }
         return formals_str;
     }
 
 
     static String getBODY(SamTokenizer f)
     {
-        if (PRINT_COMPLILE) { System.out.println("[BODY start]"); }
         // BODY -> '{' VAR_DECL* STMT* '}'
+        if (PRINT_COMPLILE) { System.out.println("<BODY start"); }
 
         String body_str = "";
 
@@ -156,25 +241,25 @@ public class BaliCompiler
         if (PRINT_COMPLILE) { System.out.println("\t[ { ]"); }
         if (f.check("int"))
         {
-            String var_del_str = getVAR_DECL(f);
+            body_str += getVAR_DECL(f);
         }
         if (!f.check('}'))
         {
             while (!f.check('}'))
             {
-                String stmt_str = getSTMT(f);
+                body_str += getSTMT(f);
             }
         }
         if (PRINT_COMPLILE) { System.out.println("\t[ } ]"); }
 
-        if (PRINT_COMPLILE) { System.out.println("[BODY end]"); }
+        if (PRINT_COMPLILE) { System.out.println("BODY end>"); }
         return body_str;
     }
 
 
     static String getVAR_DECL(SamTokenizer f)
     {
-        if (PRINT_COMPLILE) { System.out.println("[VAR_DECL start]"); }
+        if (PRINT_COMPLILE) { System.out.println("<VAR_DECL start"); }
         // VAR_DECL -> TYPE ID ('=' EXP)? (',' ID ('=' EXP)?)* ';'
         String var_decl_str = "";
 
@@ -184,7 +269,8 @@ public class BaliCompiler
         // ('=' [EXP])?
         if (f.check('='))
         {
-            getEXP(f);
+            String exp1_str = getEXP(f);
+            var_decl_str = "VAR " + var_id + " " + exp1_str;
         }
         // (',' [ID] ('=' [EXP])?)*
         while (f.check(','))
@@ -193,24 +279,22 @@ public class BaliCompiler
             if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + var_id + ")"); }
             if (f.check('='))
             {
-                getEXP(f);
+                String exp_str = getEXP(f);
+                var_decl_str += "VAR " + var_id + " " + exp_str;
             }
         }
         f.match(';'); // ';'
         if (PRINT_COMPLILE) { System.out.println("\t[ ; ]"); }
 
-        if (PRINT_COMPLILE) { System.out.println("[VAR_DECL end]"); }
+        if (PRINT_COMPLILE) { System.out.println("VAR_DECL end>"); }
         return var_decl_str;
     }
 
 
     static String getSTMT(SamTokenizer f)
     {
-        if (PRINT_COMPLILE) { System.out.println("[STMT start]"); }
-        String stmt = "";
-
-        // System.out.println("[LOOK] " + generateMsg(f));
-        // System.out.println("[PEEK] " + f.peekAtKind());
+        if (PRINT_COMPLILE) { System.out.println("<STMT start"); }
+        String stmt_str = "";
         
         switch (f.peekAtKind())
         {
@@ -223,9 +307,11 @@ public class BaliCompiler
                     case "return":
                     {
                         if (PRINT_COMPLILE) { System.out.println("\t[KEYWORD] (return)"); }
-                        getEXP(f);
+                        String exp_str = getEXP(f);
                         f.match(';');
                         if (PRINT_COMPLILE) { System.out.println("\t[ ; ]"); }
+
+                        stmt_str = exp_str + "RETURN\n";
                         break;
                     }
                     // "if" '(' [EXP] ')' [STMT] "else" [STMT]
@@ -234,12 +320,15 @@ public class BaliCompiler
                         if (PRINT_COMPLILE) { System.out.println("\t[KEYWORD] (if)"); }
                         f.check('(');
                         if (PRINT_COMPLILE) { System.out.println("\t[ ( ]"); }
-                        getEXP(f);
+                        String exp1_str = getEXP(f);
                         f.check(')');
                         if (PRINT_COMPLILE) { System.out.println("\t[ ) ]"); }
-                        getSTMT(f);
+                        String stmt1_str = getSTMT(f);
                         f.check("else");
-                        getSTMT(f);
+                        String stmt2_str = getSTMT(f);
+                        
+                        
+                        stmt_str = "IF\n" + exp1_str + stmt1_str + "ELSE\n" + stmt2_str;
                         break;
                     }
                     // "while" '(' [EXP] ')' [STMT]
@@ -248,10 +337,13 @@ public class BaliCompiler
                         if (PRINT_COMPLILE) { System.out.println("\t[KEYWORD] (while)"); }
                         f.check('(');
                         if (PRINT_COMPLILE) { System.out.println("\t[ ( ]"); }
-                        getEXP(f);
+                        String exp1_str = getEXP(f);
                         f.check(')');
                         if (PRINT_COMPLILE) { System.out.println("\t[ ) ]"); }
-                        getSTMT(f);
+                        String stmt1_str = getSTMT(f);
+                        
+                        
+                        stmt_str = "WHILE\n" + exp1_str + stmt1_str;
                         break;
                     }
                     // "break" ';'
@@ -259,23 +351,26 @@ public class BaliCompiler
                     {
                         if (PRINT_COMPLILE) { System.out.println("\t[KEYWORD] (break)"); }
                         f.check(';');
+
+                        stmt_str = "BREAK\n";
                         break;
                     }
                     default:
                     {
                         if (isID(word_id))
                         {
-                            if (PRINT_COMPLILE) { System.out.println("[ASSIGN]"); }
-                            if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + word_id + ")"); }
+                            if (PRINT_COMPLILE) { System.out.println("\t[ASSIGN] -> [ID] (" + word_id + ")"); }
                             f.check('=');
-                            getEXP(f);
+                            String exp1_str = getEXP(f);
                             f.check(';');
+
+                            stmt_str = exp1_str + "ASSIGN " + word_id + "\n";
+                            break;
                         }
                         else
                         {
                             throw new TokenizerException("Unexpected word '" + word_id + "' found @ line " + f.lineNo());
                         }
-                        break;
                     }
                 }
                 break;
@@ -288,15 +383,18 @@ public class BaliCompiler
                     // [BLOCK] -> '{' [STMT]* '}'
                     case '{':
                     {
-                        if (PRINT_COMPLILE) { System.out.println("[BLOCK]"); }
+                        if (PRINT_COMPLILE) { System.out.println("\t[BLOCK]"); }
                         if (PRINT_COMPLILE) { System.out.println("\t[ { ]"); }
+                        String block_str = "";
                         while (!f.check('}'))
                         {
-                            getSTMT(f);
+                            block_str += getSTMT(f);
                         }
                         if (PRINT_COMPLILE) { System.out.println("\t[ } ]"); }
+                        stmt_str = block_str;
                         break;
                     }
+                    // ';'
                     case ';':
                     {
                         if (PRINT_COMPLILE) { System.out.println("\t[ ; ]"); }
@@ -311,22 +409,24 @@ public class BaliCompiler
                 throw new TokenizerException("Unexpected token found: " + f.peekAtKind() + " value: '" + peep_value(f) + "' @ line " + f.lineNo());
         }
         
-        if (PRINT_COMPLILE) { System.out.println("[STMT end]"); }
-        return stmt;
+        if (PRINT_COMPLILE) { System.out.println("STMT end>"); }
+        return stmt_str;
     }
 
     
     static String getEXP(SamTokenizer f) 
     {
-        if (PRINT_COMPLILE) { System.out.println("[EXP start]"); }
-        String exp_str = "";
+        if (PRINT_COMPLILE) { System.out.println("<EXP start"); }
+        String return_str = "";
 
         switch (f.peekAtKind()) 
         {
+            // [LITERAL] -> [INT]
             case INTEGER:
             {
                 int i = f.getInt();
-                if (PRINT_COMPLILE) { System.out.println("\t[LITERAL] -> [INT] (" + i + ")"); }
+                if (PRINT_COMPLILE) { System.out.println("\t[LITERAL] -> [INT] (" + i + ")\nEXP end>"); }
+                return_str = "PUSHIMM " + i + "\n";
                 break;
             }
             case WORD:
@@ -336,26 +436,39 @@ public class BaliCompiler
                 // [METHOD] or [LOCATION]
                 if (isID(word_str))
                 {       
-                    // [METHOD] '(' ACTUALS? ')'   
+                    // [METHOD] '(' [ACTUALS]? ')'
                     if (f.check('('))
                     {
-                        if (PRINT_COMPLILE) { System.out.println("[METHOD] -> [ID] (" + word_str + ")"); }
+                        if (PRINT_COMPLILE) { System.out.println("\t[METHOD] -> [ID] (" + word_str + ")"); }
+                        String actuals_str = "";
                         if (!f.check(')'))
                         {
-                            String actuals_str = getACTUALS(f);
+                            actuals_str = getACTUALS(f);
                             f.match(')');
                         }
+                        return_str = "METHOD " + word_str + "\n" + "ACTUALS\n" + actuals_str;
+                        break;
                     }
                     // [LOCATION] -> [ID]
                     else
                     {
-                        if (PRINT_COMPLILE) { System.out.println("[LOCATION] -> [ID] (" + word_str + ")"); }
+                        if (PRINT_COMPLILE) { System.out.println("\t[LOCATION] -> [ID] (" + word_str + ")"); }
+                        return_str = "PUSHOFF " + getOffset(word_str) + "\n";
+                        break;
                     }     
                 }
-                // [LITERAL] -> [INT] | "true" | "false"
+                // [LITERAL] -> "true" | "false"
                 else if (word_str == "true" || word_str == "false")
                 {
                     if (PRINT_COMPLILE) { System.out.println("\t[LITERAL] (" + word_str + ")"); }
+                    if (word_str == "true")
+                    {
+                        return_str = "PUSHIMM 1\n";
+                    }
+                    else if (word_str == "false")
+                    {
+                        return_str = "PUSHIMM 0\n";
+                    }
                 }
                 break;
             }
@@ -364,36 +477,60 @@ public class BaliCompiler
                 f.match('(');
                 if (PRINT_COMPLILE) { System.out.println("\t[ ( ]"); }
 
+                String expr1 = "";
+                String expr2 = "";
+
                 if (f.check('-'))
                 {
-                    String str = getEXP(f);
-                    break;
+                    expr1 = getEXP(f);
+                    return_str = "PUSHIMM -" + expr1 + "\n";
                 }
                 else if (f.check('!'))
                 {
-                    String str = getEXP(f);
-                    break;
+                    expr1 = getEXP(f);
+                    return_str = "NOT\n" + "PUSHIMM " + expr1 + "\n";
                 }
                 else
                 {
-                    String str1 = getEXP(f);
+                    String operation = "";
+                    expr1 = getEXP(f);
                     Character c = f.getOp();
                     switch (c)
                     {
                         case '+':
-                        case '-':
-                        case '*':
-                        case '/':
-                        case '&':
-                        case '|':
-                        case '<':
-                        case '>':
-                        case '=':
-                            if (PRINT_COMPLILE) { System.out.println("\t[MATH SYMBOL] ( " + c + " )"); }
+                            operation = "ADD\n";
                             break;
+                        case '-':
+                            operation = "SUB\n";
+                            break;
+                        case '*':
+                            operation = "TIMES\n";
+                            break;
+                        case '/':
+                            operation = "DIV\n";
+                            break;
+                        case '&':
+                            operation = "AND\n";
+                            break;
+                        case '|':
+                            operation = "OR\n";
+                            break;
+                        case '<':
+                            operation = "LESS\n";
+                            break;
+                        case '>':
+                            operation = "GREATER\n";
+                            break;
+                        case '=':
+                            operation = "EQUAL\n";
+                            break;
+                        default:
+                            throw new TokenizerException("Unexpected operation found: " + peep_value(f) + "' @ line " + f.lineNo());
                     }
+                    if (PRINT_COMPLILE) { System.out.println("\t[MATH SYMBOL] ( " + c + " )"); }
 
-                    String str2 = getEXP(f);
+                    expr2 = getEXP(f);
+                    return_str = expr1 + expr2 + operation;
                 }
 
                 f.match(')');
@@ -404,23 +541,24 @@ public class BaliCompiler
                 throw new TokenizerException("Unexpected token found: " + f.peekAtKind() + " value: '" + peep_value(f) + "' @ line " + f.lineNo());
         }
 
-        if (PRINT_COMPLILE) { System.out.println("[EXP end]"); }
-        return exp_str;
+        if (PRINT_COMPLILE) { System.out.println("EXP end>"); }
+        return return_str;
     }
+
 
     static String getACTUALS(SamTokenizer f)
     {
-        if (PRINT_COMPLILE) { System.out.println("[ACTUALS start]"); }
+        if (PRINT_COMPLILE) { System.out.println("<ACTUALS start"); }
         // ACTUALS -> EXP (',' EXP)*
         String actuals_str = "";
 
-        getEXP(f);
-        if (f.check(','))
+        actuals_str += getEXP(f);
+        while (f.check(','))
         {
-            getEXP(f);
+            actuals_str += getEXP(f);
         }
 
-        if (PRINT_COMPLILE) { System.out.println("[ACTUALS end]"); }
+        if (PRINT_COMPLILE) { System.out.println("ACTUALS end>"); }
         return actuals_str;
     }
 
@@ -434,5 +572,11 @@ public class BaliCompiler
     static boolean isID(String str)
     {
         return Pattern.matches("[a-zA-Z]([a-zA-Z]|[0-9]|_)*$", str);
+    }
+
+    static int getOffset(String id)
+    {
+        // TODO this
+        return -1;
     }
 }
