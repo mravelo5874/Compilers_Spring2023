@@ -164,22 +164,23 @@ public class BaliCompiler
 
     static String getPROGRAM(SamTokenizer f) 
     {
-        // PROGRAM -> METH_DECL*
+        // [PROGRAM] -> [METH_DECL]*
         if (PRINT_COMPLILE) { System.out.println("[PROGRAM start]"); }
-    
-        String pgm = "";
+        
+        // load code to set up call to main
+        String program_str = "PUSHIMM 0\nLINK\nJSR main\nPOPFBR\nSTOP\n";
+        // continue to translate tokens until EOF
         while (f.peekAtKind() != TokenType.EOF)
         {
-            pgm += getMETHOD_DECLARATION(f);
+            program_str += getMETHOD_DECLARATION(f);
         }
-        pgm += "STOP\n";
-        return pgm;
+        return program_str;
     }
 
 
     static String getMETHOD_DECLARATION(SamTokenizer f) 
     {
-        // METH_DECL -> TYPE ID '(' FORMALS? ')' BODY
+        // [METH_DECL] -> [TYPE] [ID] '(' [FORMALS]? ')' [BODY]
         if (PRINT_COMPLILE) { System.out.println("<METH_DECL start"); }
         
         String method_declaration_str= "";
@@ -209,7 +210,7 @@ public class BaliCompiler
 
     static String getFORMALS(SamTokenizer f) 
     {
-        // FORMALS -> TYPE ID (',' TYPE ID)*
+        // [FORMALS] -> [TYPE] [ID] (',' [TYPE] [ID])*
         if (PRINT_COMPLILE) { System.out.println("<FORMALS start]"); }
 
         String formals_str = "";
@@ -232,7 +233,7 @@ public class BaliCompiler
 
     static String getBODY(SamTokenizer f)
     {
-        // BODY -> '{' VAR_DECL* STMT* '}'
+        // [BODY] -> '{' [VAR_DECL]* [STMT]* '}'
         if (PRINT_COMPLILE) { System.out.println("<BODY start"); }
 
         String body_str = "";
@@ -259,8 +260,9 @@ public class BaliCompiler
 
     static String getVAR_DECL(SamTokenizer f)
     {
+        // [VAR_DECL] -> [TYPE] [ID] ('=' [EXP])? (',' [ID] ('=' [EXP])?)* ';'
         if (PRINT_COMPLILE) { System.out.println("<VAR_DECL start"); }
-        // VAR_DECL -> TYPE ID ('=' EXP)? (',' ID ('=' EXP)?)* ';'
+        
         String var_decl_str = "";
 
         String var_id = f.getWord();
@@ -548,8 +550,9 @@ public class BaliCompiler
 
     static String getACTUALS(SamTokenizer f)
     {
+        // [ACTUALS] -> [EXP] (',' [EXP])*
         if (PRINT_COMPLILE) { System.out.println("<ACTUALS start"); }
-        // ACTUALS -> EXP (',' EXP)*
+
         String actuals_str = "";
 
         actuals_str += getEXP(f);
