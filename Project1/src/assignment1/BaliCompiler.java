@@ -10,6 +10,29 @@ import java.io.FileWriter;
 import java.util.Arrays;
 import java.util.List;
 
+// pair class used to return int and string values simultaneously
+final class PAIR
+{
+    private final int num;
+    private final String str;
+
+    public PAIR(int _num, String _str) 
+    {
+        this.num = _num;
+        this.str = _str;
+    }
+
+    public int get_num() 
+    {
+        return num;
+    }
+
+    public String get_str() 
+    {
+        return str;
+    }
+}
+
 public class BaliCompiler 
 {
     static boolean PRINT_COMPLILE = false;
@@ -167,8 +190,13 @@ public class BaliCompiler
         // [PROGRAM] -> [METH_DECL]*
         if (PRINT_COMPLILE) { System.out.println("[PROGRAM start]"); }
         
-        // load code to set up call to main
-        String program_str = "PUSHIMM 0\nLINK\nJSR main\nPOPFBR\nSTOP\n";
+        // SAM CODE: load code to set up call to main
+        String program_str = 
+        "PUSHIMM 0\n" // rv slot for main return
+        + "LINK\n" // save FBR
+        + "JSR main:\n"  // call main function
+        + "POPFBR\n" 
+        + "STOP\n"; // stop program execution
         // continue to translate tokens until EOF
         while (f.peekAtKind() != TokenType.EOF)
         {
@@ -183,87 +211,110 @@ public class BaliCompiler
         // [METH_DECL] -> [TYPE] [ID] '(' [FORMALS]? ')' [BODY]
         if (PRINT_COMPLILE) { System.out.println("<METH_DECL start"); }
         
-        String method_declaration_str= "";
+        String id_str = "";
+        PAIR formals_pair = new PAIR(0, "");
 
         f.match("int");
-        String method_id = f.getWord();
-        method_declaration_str += "METHOD " + method_id + "\n";
-        if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + method_id + ")"); }
+        id_str = f.getWord();
+        if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + id_str + ")"); }
         f.match('(');
         if (PRINT_COMPLILE) { System.out.println("\t[ ( ]"); }
 
         // [FORMALS]? skip formals if parenthesis are empty
         if (!f.check(')'))
         {
-            String formals = getFORMALS(f); 
+            formals_pair = getFORMALS(f); 
             f.match(')');
-            method_declaration_str += formals;
         }
-        if (PRINT_COMPLILE) { System.out.println("\t[ ) ]"); }
-        String body_str = getBODY(f);
-        method_declaration_str += body_str;
+        int formals_count = formals_pair.get_num();
+        String formals_str = formals_pair.get_str();
 
+        if (PRINT_COMPLILE) { System.out.println("\t[ ) ]"); }
+
+        // [BODY] -> '{' [VAR_DECL]* [STMT]* '}'
+        if (PRINT_COMPLILE) { System.out.println("<BODY start"); }
+
+        PAIR var_decl_pair = new PAIR(0, "");
+        String stmts_str = "";
+        String return_str = "";
+
+        f.match('{');
+        if (PRINT_COMPLILE) { System.out.println("\t[ { ]"); }
+        if (f.check("int"))
+        {
+            var_decl_pair = getVAR_DECL(f);
+        }
+        if (!f.check('}'))
+        {
+            while (!f.check('}'))
+            {
+                String stmt_str = getSTMT(f);
+                // check for return stmt
+                if (stmt_str.startsWith("//return\n"))
+                {
+                    return_str = stmt_str.replace("//return\n", "");
+                }   
+                else
+                {
+                    stmts_str += stmt_str;
+                }
+            }
+        }
+        int var_decl_count = var_decl_pair.get_num();
+        String var_decl_str = var_decl_pair.get_str();
+        if (PRINT_COMPLILE) { System.out.println("\t[ } ]"); }
+        if (PRINT_COMPLILE) { System.out.println("BODY end>"); }
         if (PRINT_COMPLILE) { System.out.println("METH_DECL end>"); }
-        return method_declaration_str;
+
+
+        // SAM CODE FOR METHOD DECLARATION
+        return 
+        id_str + ":\n" // label for method start
+        + "ADDSP " + (formals_count + var_decl_count) + "\n" // add space for local variables
+        + formals_str // formals = locals passed as arguments
+        + var_decl_str // vars declared in body
+        + stmts_str // body stmts
+        + id_str + "_END:\n" // label for method end
+        + "STOREOFF " + getRV_OFFSET() + "\n" // return value offset
+        + "ADDSP -" + (formals_count + var_decl_count) + "\n" // remove space for locals
+        + "JUMPIND\n" // return to calle
+        + return_str // return exp
+        + "JUMP " + id_str + "_END:\n"; // label for method end
     }
 
 
-    static String getFORMALS(SamTokenizer f) 
+    static PAIR getFORMALS(SamTokenizer f) 
     {
         // [FORMALS] -> [TYPE] [ID] (',' [TYPE] [ID])*
         if (PRINT_COMPLILE) { System.out.println("<FORMALS start]"); }
 
+        int count = 1;
         String formals_str = "";
 
         f.check("int");
         String formal_id = f.getWord();
-        formals_str += "FORMAL " + formal_id + "\n";
+        int offset = getOffset(formal_id);
+        formals_str += "PUSHOFF " + offset + "\n";
         if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + formal_id + ")"); }
 
         // recursive getFormals() iff ',' present 
         if (f.check(','))
         {
             formals_str += getFORMALS(f);
+            count++;
         }
-        
         if (PRINT_COMPLILE) { System.out.println("FORMALS end>"); }
-        return formals_str;
+
+        return new PAIR(count, formals_str);
     }
 
-
-    static String getBODY(SamTokenizer f)
-    {
-        // [BODY] -> '{' [VAR_DECL]* [STMT]* '}'
-        if (PRINT_COMPLILE) { System.out.println("<BODY start"); }
-
-        String body_str = "";
-
-        f.match('{');
-        if (PRINT_COMPLILE) { System.out.println("\t[ { ]"); }
-        if (f.check("int"))
-        {
-            body_str += getVAR_DECL(f);
-        }
-        if (!f.check('}'))
-        {
-            while (!f.check('}'))
-            {
-                body_str += getSTMT(f);
-            }
-        }
-        if (PRINT_COMPLILE) { System.out.println("\t[ } ]"); }
-
-        if (PRINT_COMPLILE) { System.out.println("BODY end>"); }
-        return body_str;
-    }
-
-
-    static String getVAR_DECL(SamTokenizer f)
+    static PAIR getVAR_DECL(SamTokenizer f)
     {
         // [VAR_DECL] -> [TYPE] [ID] ('=' [EXP])? (',' [ID] ('=' [EXP])?)* ';'
         if (PRINT_COMPLILE) { System.out.println("<VAR_DECL start"); }
         
-        String var_decl_str = "";
+        int count = 1;
+        String vars_str = "";
 
         String var_id = f.getWord();
         if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + var_id + ")"); }
@@ -272,7 +323,21 @@ public class BaliCompiler
         if (f.check('='))
         {
             String exp1_str = getEXP(f);
-            var_decl_str = "VAR " + var_id + " " + exp1_str;
+            int offset = makeOffset(var_id);
+
+            // SAM CODE FOR DECLARING NEW LOCAL VAR W/ EXP
+            var_id +=
+            exp1_str
+            + "STOREOFF " + offset + "\n";
+            vars_str += var_id;
+        }
+        else
+        {
+            // int offset = getOffset(var_id);
+
+            // // SAM CODE FOR DECLARING NEW LOCAL VAR W/O EXP
+            // var_id += "PUSHOFF " + offset + "\n";
+            // vars_str += var_id;
         }
         // (',' [ID] ('=' [EXP])?)*
         while (f.check(','))
@@ -281,15 +346,30 @@ public class BaliCompiler
             if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + var_id + ")"); }
             if (f.check('='))
             {
-                String exp_str = getEXP(f);
-                var_decl_str += "VAR " + var_id + " " + exp_str;
+                String exp1_str = getEXP(f);
+                int offset = makeOffset(var_id);
+
+                // SAM CODE FOR DECLARING NEW LOCAL VAR W/ EXP
+                var_id +=
+                exp1_str
+                + "STOREOFF " + offset + "\n";
+                vars_str += var_id;
             }
+            else
+            {
+                // int offset = getOffset(var_id);
+
+                // // SAM CODE FOR DECLARING NEW LOCAL VAR W/O EXP
+                // var_id += "PUSHOFF " + offset + "\n";
+                // vars_str += var_id;
+            }
+            count++;
         }
         f.match(';'); // ';'
         if (PRINT_COMPLILE) { System.out.println("\t[ ; ]"); }
-
         if (PRINT_COMPLILE) { System.out.println("VAR_DECL end>"); }
-        return var_decl_str;
+
+        return new PAIR(count, vars_str);
     }
 
 
@@ -313,7 +393,7 @@ public class BaliCompiler
                         f.match(';');
                         if (PRINT_COMPLILE) { System.out.println("\t[ ; ]"); }
 
-                        stmt_str = exp_str + "RETURN\n";
+                        stmt_str = "//return\n" + exp_str;
                         break;
                     }
                     // "if" '(' [EXP] ')' [STMT] "else" [STMT]
@@ -329,8 +409,18 @@ public class BaliCompiler
                         f.check("else");
                         String stmt2_str = getSTMT(f);
                         
+                        String label_1 = getLABEL();
+                        String label_2 = getLABEL();
                         
-                        stmt_str = "IF\n" + exp1_str + stmt1_str + "ELSE\n" + stmt2_str;
+                        // SAM CODE FOR IF ELSE
+                        stmt_str = 
+                            exp1_str 
+                            + "JUMPC " + label_1 + "\n" 
+                            + stmt2_str 
+                            + "JUMP " + label_2 + "\n" 
+                            + label_1 + "\n" 
+                            +  stmt1_str 
+                            + label_2 + "\n";
                         break;
                     }
                     // "while" '(' [EXP] ')' [STMT]
@@ -344,8 +434,17 @@ public class BaliCompiler
                         if (PRINT_COMPLILE) { System.out.println("\t[ ) ]"); }
                         String stmt1_str = getSTMT(f);
                         
-                        
-                        stmt_str = "WHILE\n" + exp1_str + stmt1_str;
+                        String label_1 = getLABEL();
+                        String label_2 = getLABEL();
+
+                        // SAM CODE FOR WHILE
+                        stmt_str = 
+                            "JUMP " + label_1 + "\n"
+                            + label_2 + "\n"
+                            + stmt1_str
+                            + label_1 + "\n"
+                            + exp1_str
+                            + "JUMPC " + label_2 + "\n";
                         break;
                     }
                     // "break" ';'
@@ -353,8 +452,9 @@ public class BaliCompiler
                     {
                         if (PRINT_COMPLILE) { System.out.println("\t[KEYWORD] (break)"); }
                         f.check(';');
-
-                        stmt_str = "BREAK\n";
+                        
+                        // TODO this
+                        stmt_str = "[break]\n";
                         break;
                     }
                     default:
@@ -366,7 +466,12 @@ public class BaliCompiler
                             String exp1_str = getEXP(f);
                             f.check(';');
 
-                            stmt_str = exp1_str + "ASSIGN " + word_id + "\n";
+                            int offset = getOffset(word_id);
+
+                            // SAM CODE FOR ASSIGNING VAR W/ EXP
+                            stmt_str +=
+                            exp1_str
+                            + "STOREOFF " + offset + "\n";
                             break;
                         }
                         else
@@ -442,13 +547,25 @@ public class BaliCompiler
                     if (f.check('('))
                     {
                         if (PRINT_COMPLILE) { System.out.println("\t[METHOD] -> [ID] (" + word_str + ")"); }
-                        String actuals_str = "";
+                        
+                        // use PAIR class to get back 2 values
+                        PAIR actuals_pair = new PAIR(0, "");
                         if (!f.check(')'))
                         {
-                            actuals_str = getACTUALS(f);
+                            actuals_pair = getACTUALS(f);
                             f.match(')');
                         }
-                        return_str = "METHOD " + word_str + "\n" + "ACTUALS\n" + actuals_str;
+                        int param_count = actuals_pair.get_num();
+                        String exps_str = actuals_pair.get_str();
+
+                        // SAM CODE FOR METHOD
+                        return_str = 
+                        "PUSHIMM 0\n"
+                        + exps_str
+                        + "LINK\n"
+                        + "JSR " + word_str + ":\n"
+                        + "POPFBR\n"
+                        + "ADDSP -" + param_count + "\n";
                         break;
                     }
                     // [LOCATION] -> [ID]
@@ -548,21 +665,23 @@ public class BaliCompiler
     }
 
 
-    static String getACTUALS(SamTokenizer f)
+    static PAIR getACTUALS(SamTokenizer f)
     {
         // [ACTUALS] -> [EXP] (',' [EXP])*
         if (PRINT_COMPLILE) { System.out.println("<ACTUALS start"); }
 
+        int count = 1;
         String actuals_str = "";
 
         actuals_str += getEXP(f);
         while (f.check(','))
         {
             actuals_str += getEXP(f);
+            count++;
         }
 
         if (PRINT_COMPLILE) { System.out.println("ACTUALS end>"); }
-        return actuals_str;
+        return new PAIR(count, actuals_str);
     }
 
 
@@ -578,6 +697,24 @@ public class BaliCompiler
     }
 
     static int getOffset(String id)
+    {
+        // TODO this
+        return -1;
+    }
+
+    static int makeOffset(String id)
+    {
+        // TODO this
+        return -1;
+    }
+
+    static String getLABEL()
+    {
+        // TODO this
+        return "[label]";
+    }
+
+    static int getRV_OFFSET()
     {
         // TODO this
         return -1;
