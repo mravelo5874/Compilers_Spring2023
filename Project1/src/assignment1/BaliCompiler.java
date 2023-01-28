@@ -7,6 +7,7 @@ import edu.cornell.cs.sam.io.Tokenizer.TokenType;
 import java.io.IOException;
 import java.util.regex.Pattern;
 import java.io.FileWriter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -26,89 +27,95 @@ final class PAIR
     public String get_str() { return this.str; }
 }
 
+// pair class used to return two string values simultaneously
+final class STR_PAIR
+{
+    private final String str_1;
+    private final String str_2;
+
+    // real constructor
+    public STR_PAIR(String _str_1, String _str_2) { this.str_1 = _str_1; this.str_2 = _str_2; }
+
+    // default constructor
+    public STR_PAIR() { this.str_1 = ""; this.str_2 = ""; }
+    // public getters 
+    public String get_str_1() { return this.str_1; }
+    public String get_str_2() { return this.str_2; }
+}
+
 // class that encapsulates a symbol table for a single method
 final class SYMBOL_TABLE
 {
-    // public for append method
-    public final String method_id;
-    public List<PAIR> symbol_table;
-    public int count;
+    private List<String> parameters;
+    private List<String> locals;
 
-    public SYMBOL_TABLE(String _method_id)
+    public SYMBOL_TABLE()
     {
         // initialize variables
-        this.method_id = _method_id;
-        this.symbol_table = Arrays.asList();
-        this.count = 0;
+        this.parameters = new ArrayList<String>();
+        this.locals = new ArrayList<String>();
         // add return value as first symbol
-        AddSymbol("rv");
-    }
-
-    // add a new symbol to table
-    public void AddSymbol(String str)
-    {
-        this.symbol_table.add(new PAIR(this.count, str));
-        this.count++;
+        this.parameters.add("rv");
     }   
 
-    // remove symbol from table (if exists)
-    public void RemoveSymbol(String s)
+    // public count getters
+    public int get_param_count() { return parameters.size(); }
+    public int get_local_count() { return locals.size(); }
+
+    // add a new parameter
+    public void add_param(String str, SamTokenizer f)
     {
-        // check if sysmbol exists
-        if (isSymbol(s))
+        if (is_symbol(str))
         {
-            // iterate through table and find
-            for (PAIR pair : symbol_table) 
-            {
-                if (pair.get_str() == s)
-                {
-                    // remove symbol and decrease count
-                    this.symbol_table.remove(pair);
-                    this.count--;
-                    return;
-                }
-            }
+            throw new TokenizerException("Found repeat symbol declaration for '" + str + "' @ line " + f.lineNo());
         }
+        this.parameters.add(str);
+    }   
+
+    // add a new local
+    public void add_local(String str, SamTokenizer f)
+    {
+        if (is_symbol(str))
+        {
+            throw new TokenizerException("Found repeat symbol declaration for '" + str + "' @ line " + f.lineNo());
+        }
+        this.locals.add(str);
     }
 
-    // checks if symbol is present in the table
-    public Boolean isSymbol(String s)
+    // check if symbol already exists
+    public boolean is_symbol(String str)
     {
-        for (PAIR pair : symbol_table) 
-        {
-            if (pair.get_str() == s)
-            {
-                return true;
-            }
-        }
-        return false;
+        return parameters.contains(str) || locals.contains(str);
     }
 
-    // union together two tables
-    public void unionTable(SYMBOL_TABLE table)
+    // get offset for a variable (local or parameter)
+    public int get_offset(String str, SamTokenizer f)
     {
-        // first remove the return value from the new table
-        table.RemoveSymbol("rv");
-        // then add together counts 
-        this.count += table.count;
-        // finally add all symbols from new table to this table
-        this.symbol_table.addAll(table.symbol_table);
-    }
-
-    // assuming no more symbols will be added to the table,
-    // this returns the respective offset for a symbol
-    private int getSymbolOffset(String s)
-    {
-        for (PAIR pair : symbol_table) 
+        if (is_symbol(str))
         {
-            if (pair.get_str() == s)
+            // check parameter
+            if (parameters.contains(str))
             {
-                return this.count - pair.get_num();
+                return -1 * (parameters.indexOf(str) + 1);
+            }
+            else if (locals.contains(str))
+            {
+                return locals.indexOf(str) + 2;
             }
         }
-        throw new TokenizerException("Attempted to get offset of non-existing symbol '" + s + "' from '" + this.method_id + "' table.");
+        throw new TokenizerException("Attempt to get offset for non-existing symbol '" + str + "' @ line " + f.lineNo());
     }
 }
+
+
+
+
+
+
+
+
+
+
 
 public class BaliCompiler 
 {
@@ -147,7 +154,7 @@ public class BaliCompiler
         }
         else
         {
-            input_file = "testcases/test4.bali";
+            input_file = "examples/good.expr-1.bali";
             output_file = "output.sam";
         }
 
@@ -272,7 +279,7 @@ public class BaliCompiler
         String program_str = 
         "PUSHIMM 0\n" // rv slot for main return
         + "LINK\n" // save FBR
-        + "JSR main:\n"  // call main function
+        + "JSR main\n"  // call main function
         + "POPFBR\n" 
         + "STOP\n"; // stop program execution
         // continue to translate tokens until EOF
@@ -294,7 +301,8 @@ public class BaliCompiler
 
         // create new symbol table for formals
         String id_str = f.getWord();
-        SYMBOL_TABLE formals_st = new SYMBOL_TABLE(id_str);
+        SYMBOL_TABLE st = new SYMBOL_TABLE();
+        List<String> params = new ArrayList<String>();
         f.match('(');
 
             if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + id_str + ")"); }
@@ -303,31 +311,39 @@ public class BaliCompiler
         // [FORMALS]? skip formals if parenthesis are empty
         if (!f.check(')'))
         {
-            formals_st = getFORMALS(f);
+            params.addAll(getFORMALS(f));
             f.match(')');
+        }
+        // add parameters to symbol table
+        for (String p : params) 
+        {
+            st.add_param(p, f);
         }
 
             if (PRINT_COMPLILE) { System.out.println("\t[ ) ]"); }
             if (PRINT_COMPLILE) { System.out.println("<BODY start"); }
         
         // [BODY] -> '{' [VAR_DECL]* [STMT]* '}'
+        List<STR_PAIR> locals = new ArrayList<STR_PAIR>();
         String stmts_str = "";
         String return_str = "";
-        SYMBOL_TABLE var_decl_st = new SYMBOL_TABLE(id_str);
 
         f.match('{');
 
             if (PRINT_COMPLILE) { System.out.println("\t[ { ]"); }
-
-        if (f.check("int"))
+        
+        // get variable declarations
+        while (f.check("int"))
         {
-            var_decl_st = getVAR_DECL(f);
+            locals.addAll(getVAR_DECL(f, st));
         }
+
+        // get statements until return statement is found
         if (!f.check('}'))
         {
             while (!f.check('}'))
             {
-                String stmt_str = getSTMT(f);
+                String stmt_str = getSTMT(f, st);
                 // check for return stmt
                 if (stmt_str.startsWith("//return\n"))
                 {
@@ -347,117 +363,97 @@ public class BaliCompiler
         // SAM CODE FOR METHOD DECLARATION
         return
         id_str + ":\n" // label for method start
-        + "ADDSP " + st.count + "\n" // add space for local variables
-        + var_decl_str // vars declared in body
+        + "ADDSP " + st.get_local_count() + "\n" // add space for local variables
         + stmts_str // body stmts
         + id_str + "_END:\n" // label for method end
-        + "STOREOFF " + getRV_OFFSET() + "\n" // return value offset
-        + "ADDSP -" + st.count + "\n" // remove space for locals
+        + "STOREOFF " + st.get_offset("rv", f) + "\n" // return value offset
+        + "ADDSP -" + st.get_local_count() + "\n" // remove space for locals
         + "JUMPIND\n" // return to calle
         + return_str // return exp
         + "JUMP " + id_str + "_END\n"; // label for method end
     }
 
 
-    static SYMBOL_TABLE getFORMALS(SamTokenizer f)
+    static List<String> getFORMALS(SamTokenizer f)
     {
         // [FORMALS] -> [TYPE] [ID] (',' [TYPE] [ID])*
 
             if (PRINT_COMPLILE) { System.out.println("<FORMALS start]"); }
 
-        SYMBOL_TABLE st = new SYMBOL_TABLE("formals");
+        List<String> params = new ArrayList<String>();
 
         f.check("int");
         String formal_id = f.getWord();
-        if (!st.isSymbol(formal_id))
-        {
-            st.AddSymbol(formal_id);
-        }
+        params.add(formal_id);
         
         if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + formal_id + ")"); }
 
         // recursive getFormals() iff ',' present 
         if (f.check(','))
         {
-            st.unionTable(getFORMALS(f));
+            params.addAll(getFORMALS(f));
         }
 
             if (PRINT_COMPLILE) { System.out.println("FORMALS end>"); }
 
-        return st;
+        return params;
     }
 
 
-    static SYMBOL_TABLE getVAR_DECL(SamTokenizer f)
+    static List<STR_PAIR> getVAR_DECL(SamTokenizer f, SYMBOL_TABLE st)
     {
         // [VAR_DECL] -> [TYPE] [ID] ('=' [EXP])? (',' [ID] ('=' [EXP])?)* ';'
 
             if (PRINT_COMPLILE) { System.out.println("<VAR_DECL start"); }
         
-        SYMBOL_TABLE st = new SYMBOL_TABLE("var_decl");
-
+        List<STR_PAIR> locals = new ArrayList<STR_PAIR>();
         String var_id = f.getWord();
+        st.add_local(var_id, f);
 
             if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + var_id + ")"); }
 
         // ('=' [EXP])?
         if (f.check('='))
         {
-            String exp1_str = getEXP(f);
-            int offset = makeOffset(var_id);
-
-            // SAM CODE FOR DECLARING NEW LOCAL VAR W/ EXP
-            var_id +=
-            exp1_str
-            + "STOREOFF " + offset + "\n";
-            vars_str += var_id;
+            // store variable name and expression string
+            String exp1_str = getEXP(f, st);
+            locals.add(new STR_PAIR(var_id, exp1_str));
         }
         else
         {
-            // int offset = getOffset(var_id);
-
-            // // SAM CODE FOR DECLARING NEW LOCAL VAR W/O EXP
-            // var_id += "PUSHOFF " + offset + "\n";
-            // vars_str += var_id;
+           // store variable name with empty expression
+           locals.add(new STR_PAIR(var_id, ""));
         }
         // (',' [ID] ('=' [EXP])?)*
         while (f.check(','))
         {
             var_id = f.getWord(); // [ID] -> var id
+            st.add_local(var_id, f);
 
                 if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + var_id + ")"); }
 
             if (f.check('='))
             {
-                String exp1_str = getEXP(f);
-                int offset = makeOffset(var_id);
-
-                // SAM CODE FOR DECLARING NEW LOCAL VAR W/ EXP
-                var_id +=
-                exp1_str
-                + "STOREOFF " + offset + "\n";
-                vars_str += var_id;
+                // store variable name and expression string
+                String exp1_str = getEXP(f, st);
+                locals.add(new STR_PAIR(var_id, exp1_str));
             }
             else
             {
-                // int offset = getOffset(var_id);
-
-                // // SAM CODE FOR DECLARING NEW LOCAL VAR W/O EXP
-                // var_id += "PUSHOFF " + offset + "\n";
-                // vars_str += var_id;
+                // store variable name with empty expression
+                locals.add(new STR_PAIR(var_id, ""));
             }
-            count++;
         }
         f.match(';'); // ';'
 
             if (PRINT_COMPLILE) { System.out.println("\t[ ; ]"); }
             if (PRINT_COMPLILE) { System.out.println("VAR_DECL end>"); }
 
-        return new PAIR(count, vars_str);
+        return locals;
     }
 
 
-    static String getSTMT(SamTokenizer f)
+    static String getSTMT(SamTokenizer f, SYMBOL_TABLE st)
     {
             if (PRINT_COMPLILE) { System.out.println("<STMT start"); }
 
@@ -475,7 +471,7 @@ public class BaliCompiler
                     {
                             if (PRINT_COMPLILE) { System.out.println("\t[KEYWORD] (return)"); }
 
-                        String exp_str = getEXP(f);
+                        String exp_str = getEXP(f, st);
                         f.match(';');
 
                             if (PRINT_COMPLILE) { System.out.println("\t[ ; ]"); }
@@ -492,14 +488,14 @@ public class BaliCompiler
 
                             if (PRINT_COMPLILE) { System.out.println("\t[ ( ]"); }
 
-                        String exp1_str = getEXP(f);
+                        String exp1_str = getEXP(f, st);
                         f.check(')');
 
                             if (PRINT_COMPLILE) { System.out.println("\t[ ) ]"); }
 
-                        String stmt1_str = getSTMT(f);
+                        String stmt1_str = getSTMT(f, st);
                         f.check("else");
-                        String stmt2_str = getSTMT(f);
+                        String stmt2_str = getSTMT(f, st);
                         
                         String label_1 = getLABEL();
                         String label_2 = getLABEL();
@@ -524,12 +520,12 @@ public class BaliCompiler
 
                             if (PRINT_COMPLILE) { System.out.println("\t[ ( ]"); }
 
-                        String exp1_str = getEXP(f);
+                        String exp1_str = getEXP(f, st);
                         f.check(')');
 
                             if (PRINT_COMPLILE) { System.out.println("\t[ ) ]"); }
 
-                        String stmt1_str = getSTMT(f);
+                        String stmt1_str = getSTMT(f, st);
                         
                         String label_1 = getLABEL();
                         String label_2 = getLABEL();
@@ -562,15 +558,13 @@ public class BaliCompiler
                                 if (PRINT_COMPLILE) { System.out.println("\t[ASSIGN] -> [ID] (" + word_id + ")"); }
 
                             f.check('=');
-                            String exp1_str = getEXP(f);
+                            String exp1_str = getEXP(f, st);
                             f.check(';');
-
-                            int offset = getOffset(word_id);
 
                             // SAM CODE FOR ASSIGNING VAR W/ EXP
                             stmt_str +=
                             exp1_str
-                            + "STOREOFF " + offset + "\n";
+                            + "STOREOFF " + st.get_offset(word_id, f) + "\n";
                             break;
                         }
                         else
@@ -595,7 +589,7 @@ public class BaliCompiler
                         String block_str = "";
                         while (!f.check('}'))
                         {
-                            block_str += getSTMT(f);
+                            block_str += getSTMT(f, st);
                         }
 
                             if (PRINT_COMPLILE) { System.out.println("\t[ } ]"); }
@@ -624,8 +618,7 @@ public class BaliCompiler
         return stmt_str;
     }
 
-    
-    static String getEXP(SamTokenizer f) 
+    static String getEXP(SamTokenizer f, SYMBOL_TABLE st)
     {
             if (PRINT_COMPLILE) { System.out.println("<EXP start"); }
 
@@ -659,7 +652,7 @@ public class BaliCompiler
                         PAIR actuals_pair = new PAIR(0, "");
                         if (!f.check(')'))
                         {
-                            actuals_pair = getACTUALS(f);
+                            actuals_pair = getACTUALS(f, st);
                             f.match(')');
                         }
                         int param_count = actuals_pair.get_num();
@@ -680,7 +673,7 @@ public class BaliCompiler
                     {
                             if (PRINT_COMPLILE) { System.out.println("\t[LOCATION] -> [ID] (" + word_str + ")"); }
 
-                        return_str = "PUSHOFF " + getOffset(word_str) + "\n";
+                        return_str = "PUSHOFF " + st.get_offset(word_str, f) + "\n";
                         break;
                     }     
                 }
@@ -711,18 +704,18 @@ public class BaliCompiler
 
                 if (f.check('-'))
                 {
-                    expr1 = getEXP(f);
+                    expr1 = getEXP(f, st);
                     return_str = "PUSHIMM -" + expr1 + "\n";
                 }
                 else if (f.check('!'))
                 {
-                    expr1 = getEXP(f);
+                    expr1 = getEXP(f, st);
                     return_str = "NOT\n" + "PUSHIMM " + expr1 + "\n";
                 }
                 else
                 {
                     String operation = "";
-                    expr1 = getEXP(f);
+                    expr1 = getEXP(f, st);
                     Character c = f.getOp();
                     switch (c)
                     {
@@ -759,7 +752,7 @@ public class BaliCompiler
 
                         if (PRINT_COMPLILE) { System.out.println("\t[MATH SYMBOL] ( " + c + " )"); }
 
-                    expr2 = getEXP(f);
+                    expr2 = getEXP(f, st);
                     return_str = expr1 + expr2 + operation;
                 }
 
@@ -779,7 +772,7 @@ public class BaliCompiler
     }
 
 
-    static PAIR getACTUALS(SamTokenizer f)
+    static PAIR getACTUALS(SamTokenizer f, SYMBOL_TABLE st)
     {
         // [ACTUALS] -> [EXP] (',' [EXP])*
 
@@ -788,10 +781,10 @@ public class BaliCompiler
         int count = 1;
         String actuals_str = "";
 
-        actuals_str += getEXP(f);
+        actuals_str += getEXP(f, st);
         while (f.check(','))
         {
-            actuals_str += getEXP(f);
+            actuals_str += getEXP(f, st);
             count++;
         }
 
@@ -800,40 +793,24 @@ public class BaliCompiler
         return new PAIR(count, actuals_str);
     }
 
-    // HELPER FUNCTIONS!!!
+    // HELPER FUNCTIONS
 
     static boolean isINT(String str)
     {
         return Pattern.matches("[0-9]+", str);
     }
 
-
     static boolean isID(String str)
     {
         return Pattern.matches("[a-zA-Z]([a-zA-Z]|[0-9]|_)*$", str);
     }
 
-    static int getOffset(String id)
-    {
-        // TODO this
-        return -1;
-    }
-
-    static int makeOffset(String id)
-    {
-        // TODO this
-        return -1;
-    }
+    static int label_count = 0;
 
     static String getLABEL()
     {
-        // TODO this
-        return "[label]";
-    }
-
-    static int getRV_OFFSET()
-    {
-        // TODO this
-        return -1;
+        String label = "auto_label_" + label_count;
+        label_count++;
+        return label;
     }
 }

@@ -6,45 +6,40 @@ STOP
 
 main:
 ADDSP 3
-PUSHIMM 0 //rv
 PUSHIMM 3
-STOREOFF -3 //a
+STOREOFF 2 //a
 PUSHIMM 4
-STOREOFF -2 //b
+STOREOFF 3 //b
 
 // code for: c = addmeth(a,b);
 PUSHIMM 0
-PUSHOFF -3 //a
-PUSHOFF -2 //b
+PUSHOFF 2 //a
+PUSHOFF 3 //b
 LINK
 JSR addmeth
 POPFBR
 ADDSP -2
 
 // code for: return c;
-PUSHOFF -1 //c
-STOREOFF -4 //rv
+PUSHOFF 4 //c
+STOREOFF -1 //rv
 JUMP main_END
 
 main_END:
-STOREOFF -4 //rv
+STOREOFF -1 //rv
 ADDSP -3
 JUMPIND
 
 addmeth:
-ADDSP 4
-//PUSHOFF a
-STOREOFF -3 //x
-//PUSHOFF b
-STOREOFF -2 //y
-PUSHOFF -3 //x
-PUSHOFF -2 //y
+ADDSP 1
+PUSHOFF -2 //x
+PUSHOFF -1 //y
 ADD
-STOREOFF -1 //z
-PUSHOFF -1 //z
-STOREOFF -4 //rv
+STOREOFF 2 //z
+PUSHOFF 2 //z
+STOREOFF -3 //rv
 JUMP addmeth_END
 
 addmeth_END:
-STOREOFF -4 //rv
+STOREOFF -3 //rv
 JUMPIND

@@ -1,0 +1,14 @@
+int main()
+{
+    int a = 3;
+    int b = 4;
+    int c;
+    c = addThemNums(a,b);
+    return c;
+}
+int addThemNums(int x, int y)
+{
+    int z;
+    z = (x + y);
+    return z;
+}

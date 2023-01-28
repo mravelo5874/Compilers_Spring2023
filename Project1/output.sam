@@ -3,47 +3,34 @@ LINK
 JSR main
 POPFBR
 STOP
-
-main:
-ADDSP 4
-PUSHIMM 3
-STOREOFF -3 //a
-PUSHIMM 4
-STOREOFF -2 //b
-
-// code for: c = addmeth(a,b);
-PUSHIMM 0
-PUSHOFF -3 //a
-PUSHOFF -2 //b
-LINK
-JSR addmeth
-POPFBR
-ADDSP -2
-
-// code for: return c;
-PUSHOFF -1 //c
-STOREOFF -4 //rv
-JUMP main_END
-
-main_END:
-STOREOFF -4 //rv
-ADDSP -3
-JUMPIND
-
-addmeth:
-ADDSP 4
-//PUSHOFF a
-STOREOFF -3 //x
-//PUSHOFF b
-STOREOFF -2 //y
-PUSHOFF -3 //x
-PUSHOFF -2 //y
+method1:
+ADDSP 1
+PUSHOFF -2
+PUSHIMM 10
 ADD
-STOREOFF -1 //z
-PUSHOFF -1 //z
-STOREOFF -4 //rv
-JUMP addmeth_END
-
-addmeth_END:
-STOREOFF -4 //rv
+PUSHIMM 10
+SUB
+PUSHIMM 5
+TIMES
+PUSHIMM 5
+DIV
+STOREOFF 2
+method1_END:
+STOREOFF -1
+ADDSP -1
 JUMPIND
+PUSHOFF 2
+JUMP method1_END
+main:
+ADDSP 1
+main_END:
+STOREOFF -1
+ADDSP -1
+JUMPIND
+PUSHIMM 0
+PUSHOFF 2
+LINK
+JSR method1
+POPFBR
+ADDSP -1
+JUMP main_END
