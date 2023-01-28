@@ -16,20 +16,97 @@ final class PAIR
     private final int num;
     private final String str;
 
-    public PAIR(int _num, String _str) 
+    // real constructor
+    public PAIR(int _num, String _str) { this.num = _num; this.str = _str; }
+
+    // default constructor
+    public PAIR() { this.num = 0; this.str = ""; }
+    // public getters 
+    public int get_num() { return this.num; }
+    public String get_str() { return this.str; }
+}
+
+// class that encapsulates a symbol table for a single method
+final class SYMBOL_TABLE
+{
+    // public for append method
+    public final String method_id;
+    public List<PAIR> symbol_table;
+    public int count;
+
+    public SYMBOL_TABLE(String _method_id)
     {
-        this.num = _num;
-        this.str = _str;
+        // initialize variables
+        this.method_id = _method_id;
+        this.symbol_table = Arrays.asList();
+        this.count = 0;
+        // add return value as first symbol
+        AddSymbol("rv");
     }
 
-    public int get_num() 
+    // add a new symbol to table
+    public void AddSymbol(String str)
     {
-        return num;
+        this.symbol_table.add(new PAIR(this.count, str));
+        this.count++;
+    }   
+
+    // remove symbol from table (if exists)
+    public void RemoveSymbol(String s)
+    {
+        // check if sysmbol exists
+        if (isSymbol(s))
+        {
+            // iterate through table and find
+            for (PAIR pair : symbol_table) 
+            {
+                if (pair.get_str() == s)
+                {
+                    // remove symbol and decrease count
+                    this.symbol_table.remove(pair);
+                    this.count--;
+                    return;
+                }
+            }
+        }
     }
 
-    public String get_str() 
+    // checks if symbol is present in the table
+    public Boolean isSymbol(String s)
     {
-        return str;
+        for (PAIR pair : symbol_table) 
+        {
+            if (pair.get_str() == s)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // union together two tables
+    public void unionTable(SYMBOL_TABLE table)
+    {
+        // first remove the return value from the new table
+        table.RemoveSymbol("rv");
+        // then add together counts 
+        this.count += table.count;
+        // finally add all symbols from new table to this table
+        this.symbol_table.addAll(table.symbol_table);
+    }
+
+    // assuming no more symbols will be added to the table,
+    // this returns the respective offset for a symbol
+    private int getSymbolOffset(String s)
+    {
+        for (PAIR pair : symbol_table) 
+        {
+            if (pair.get_str() == s)
+            {
+                return this.count - pair.get_num();
+            }
+        }
+        throw new TokenizerException("Attempted to get offset of non-existing symbol '" + s + "' from '" + this.method_id + "' table.");
     }
 }
 
@@ -188,7 +265,8 @@ public class BaliCompiler
     static String getPROGRAM(SamTokenizer f) 
     {
         // [PROGRAM] -> [METH_DECL]*
-        if (PRINT_COMPLILE) { System.out.println("[PROGRAM start]"); }
+
+            if (PRINT_COMPLILE) { System.out.println("[PROGRAM start]"); }
         
         // SAM CODE: load code to set up call to main
         String program_str = 
@@ -208,41 +286,42 @@ public class BaliCompiler
 
     static String getMETHOD_DECLARATION(SamTokenizer f) 
     {
-        // [METH_DECL] -> [TYPE] [ID] '(' [FORMALS]? ')' [BODY]
-        if (PRINT_COMPLILE) { System.out.println("<METH_DECL start"); }
+            if (PRINT_COMPLILE) { System.out.println("<METH_DECL start"); }
         
-        String id_str = "";
-        PAIR formals_pair = new PAIR(0, "");
+        // [METH_DECL] -> [TYPE] [ID] '(' [FORMALS]? ')' [BODY]
 
         f.match("int");
-        id_str = f.getWord();
-        if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + id_str + ")"); }
+
+        // create new symbol table for formals
+        String id_str = f.getWord();
+        SYMBOL_TABLE formals_st = new SYMBOL_TABLE(id_str);
         f.match('(');
-        if (PRINT_COMPLILE) { System.out.println("\t[ ( ]"); }
+
+            if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + id_str + ")"); }
+            if (PRINT_COMPLILE) { System.out.println("\t[ ( ]"); }
 
         // [FORMALS]? skip formals if parenthesis are empty
         if (!f.check(')'))
         {
-            formals_pair = getFORMALS(f); 
+            formals_st = getFORMALS(f);
             f.match(')');
         }
-        int formals_count = formals_pair.get_num();
-        String formals_str = formals_pair.get_str();
 
-        if (PRINT_COMPLILE) { System.out.println("\t[ ) ]"); }
-
+            if (PRINT_COMPLILE) { System.out.println("\t[ ) ]"); }
+            if (PRINT_COMPLILE) { System.out.println("<BODY start"); }
+        
         // [BODY] -> '{' [VAR_DECL]* [STMT]* '}'
-        if (PRINT_COMPLILE) { System.out.println("<BODY start"); }
-
-        PAIR var_decl_pair = new PAIR(0, "");
         String stmts_str = "";
         String return_str = "";
+        SYMBOL_TABLE var_decl_st = new SYMBOL_TABLE(id_str);
 
         f.match('{');
-        if (PRINT_COMPLILE) { System.out.println("\t[ { ]"); }
+
+            if (PRINT_COMPLILE) { System.out.println("\t[ { ]"); }
+
         if (f.check("int"))
         {
-            var_decl_pair = getVAR_DECL(f);
+            var_decl_st = getVAR_DECL(f);
         }
         if (!f.check('}'))
         {
@@ -253,71 +332,73 @@ public class BaliCompiler
                 if (stmt_str.startsWith("//return\n"))
                 {
                     return_str = stmt_str.replace("//return\n", "");
-                }   
+                }
                 else
                 {
                     stmts_str += stmt_str;
                 }
             }
         }
-        int var_decl_count = var_decl_pair.get_num();
-        String var_decl_str = var_decl_pair.get_str();
-        if (PRINT_COMPLILE) { System.out.println("\t[ } ]"); }
-        if (PRINT_COMPLILE) { System.out.println("BODY end>"); }
-        if (PRINT_COMPLILE) { System.out.println("METH_DECL end>"); }
 
+            if (PRINT_COMPLILE) { System.out.println("\t[ } ]"); }
+            if (PRINT_COMPLILE) { System.out.println("BODY end>"); }
+            if (PRINT_COMPLILE) { System.out.println("METH_DECL end>"); }
 
         // SAM CODE FOR METHOD DECLARATION
-        return 
+        return
         id_str + ":\n" // label for method start
-        + "ADDSP " + (formals_count + var_decl_count) + "\n" // add space for local variables
-        + formals_str // formals = locals passed as arguments
+        + "ADDSP " + st.count + "\n" // add space for local variables
         + var_decl_str // vars declared in body
         + stmts_str // body stmts
         + id_str + "_END:\n" // label for method end
         + "STOREOFF " + getRV_OFFSET() + "\n" // return value offset
-        + "ADDSP -" + (formals_count + var_decl_count) + "\n" // remove space for locals
+        + "ADDSP -" + st.count + "\n" // remove space for locals
         + "JUMPIND\n" // return to calle
         + return_str // return exp
-        + "JUMP " + id_str + "_END:\n"; // label for method end
+        + "JUMP " + id_str + "_END\n"; // label for method end
     }
 
 
-    static PAIR getFORMALS(SamTokenizer f) 
+    static SYMBOL_TABLE getFORMALS(SamTokenizer f)
     {
         // [FORMALS] -> [TYPE] [ID] (',' [TYPE] [ID])*
-        if (PRINT_COMPLILE) { System.out.println("<FORMALS start]"); }
 
-        int count = 1;
-        String formals_str = "";
+            if (PRINT_COMPLILE) { System.out.println("<FORMALS start]"); }
+
+        SYMBOL_TABLE st = new SYMBOL_TABLE("formals");
 
         f.check("int");
         String formal_id = f.getWord();
-        int offset = getOffset(formal_id);
-        formals_str += "PUSHOFF " + offset + "\n";
+        if (!st.isSymbol(formal_id))
+        {
+            st.AddSymbol(formal_id);
+        }
+        
         if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + formal_id + ")"); }
 
         // recursive getFormals() iff ',' present 
         if (f.check(','))
         {
-            formals_str += getFORMALS(f);
-            count++;
+            st.unionTable(getFORMALS(f));
         }
-        if (PRINT_COMPLILE) { System.out.println("FORMALS end>"); }
 
-        return new PAIR(count, formals_str);
+            if (PRINT_COMPLILE) { System.out.println("FORMALS end>"); }
+
+        return st;
     }
 
-    static PAIR getVAR_DECL(SamTokenizer f)
+
+    static SYMBOL_TABLE getVAR_DECL(SamTokenizer f)
     {
         // [VAR_DECL] -> [TYPE] [ID] ('=' [EXP])? (',' [ID] ('=' [EXP])?)* ';'
-        if (PRINT_COMPLILE) { System.out.println("<VAR_DECL start"); }
+
+            if (PRINT_COMPLILE) { System.out.println("<VAR_DECL start"); }
         
-        int count = 1;
-        String vars_str = "";
+        SYMBOL_TABLE st = new SYMBOL_TABLE("var_decl");
 
         String var_id = f.getWord();
-        if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + var_id + ")"); }
+
+            if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + var_id + ")"); }
 
         // ('=' [EXP])?
         if (f.check('='))
@@ -343,7 +424,9 @@ public class BaliCompiler
         while (f.check(','))
         {
             var_id = f.getWord(); // [ID] -> var id
-            if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + var_id + ")"); }
+
+                if (PRINT_COMPLILE) { System.out.println("\t[ID] (" + var_id + ")"); }
+
             if (f.check('='))
             {
                 String exp1_str = getEXP(f);
@@ -366,8 +449,9 @@ public class BaliCompiler
             count++;
         }
         f.match(';'); // ';'
-        if (PRINT_COMPLILE) { System.out.println("\t[ ; ]"); }
-        if (PRINT_COMPLILE) { System.out.println("VAR_DECL end>"); }
+
+            if (PRINT_COMPLILE) { System.out.println("\t[ ; ]"); }
+            if (PRINT_COMPLILE) { System.out.println("VAR_DECL end>"); }
 
         return new PAIR(count, vars_str);
     }
@@ -375,7 +459,8 @@ public class BaliCompiler
 
     static String getSTMT(SamTokenizer f)
     {
-        if (PRINT_COMPLILE) { System.out.println("<STMT start"); }
+            if (PRINT_COMPLILE) { System.out.println("<STMT start"); }
+
         String stmt_str = "";
         
         switch (f.peekAtKind())
@@ -388,10 +473,12 @@ public class BaliCompiler
                     // "return" [EXP] ';'
                     case "return":
                     {
-                        if (PRINT_COMPLILE) { System.out.println("\t[KEYWORD] (return)"); }
+                            if (PRINT_COMPLILE) { System.out.println("\t[KEYWORD] (return)"); }
+
                         String exp_str = getEXP(f);
                         f.match(';');
-                        if (PRINT_COMPLILE) { System.out.println("\t[ ; ]"); }
+
+                            if (PRINT_COMPLILE) { System.out.println("\t[ ; ]"); }
 
                         stmt_str = "//return\n" + exp_str;
                         break;
@@ -399,12 +486,17 @@ public class BaliCompiler
                     // "if" '(' [EXP] ')' [STMT] "else" [STMT]
                     case "if":
                     {
-                        if (PRINT_COMPLILE) { System.out.println("\t[KEYWORD] (if)"); }
+                            if (PRINT_COMPLILE) { System.out.println("\t[KEYWORD] (if)"); }
+
                         f.check('(');
-                        if (PRINT_COMPLILE) { System.out.println("\t[ ( ]"); }
+
+                            if (PRINT_COMPLILE) { System.out.println("\t[ ( ]"); }
+
                         String exp1_str = getEXP(f);
                         f.check(')');
-                        if (PRINT_COMPLILE) { System.out.println("\t[ ) ]"); }
+
+                            if (PRINT_COMPLILE) { System.out.println("\t[ ) ]"); }
+
                         String stmt1_str = getSTMT(f);
                         f.check("else");
                         String stmt2_str = getSTMT(f);
@@ -426,12 +518,17 @@ public class BaliCompiler
                     // "while" '(' [EXP] ')' [STMT]
                     case "while":
                     {
-                        if (PRINT_COMPLILE) { System.out.println("\t[KEYWORD] (while)"); }
+                            if (PRINT_COMPLILE) { System.out.println("\t[KEYWORD] (while)"); }
+
                         f.check('(');
-                        if (PRINT_COMPLILE) { System.out.println("\t[ ( ]"); }
+
+                            if (PRINT_COMPLILE) { System.out.println("\t[ ( ]"); }
+
                         String exp1_str = getEXP(f);
                         f.check(')');
-                        if (PRINT_COMPLILE) { System.out.println("\t[ ) ]"); }
+
+                            if (PRINT_COMPLILE) { System.out.println("\t[ ) ]"); }
+
                         String stmt1_str = getSTMT(f);
                         
                         String label_1 = getLABEL();
@@ -450,7 +547,8 @@ public class BaliCompiler
                     // "break" ';'
                     case "break":
                     {
-                        if (PRINT_COMPLILE) { System.out.println("\t[KEYWORD] (break)"); }
+                            if (PRINT_COMPLILE) { System.out.println("\t[KEYWORD] (break)"); }
+
                         f.check(';');
                         
                         // TODO this
@@ -461,7 +559,8 @@ public class BaliCompiler
                     {
                         if (isID(word_id))
                         {
-                            if (PRINT_COMPLILE) { System.out.println("\t[ASSIGN] -> [ID] (" + word_id + ")"); }
+                                if (PRINT_COMPLILE) { System.out.println("\t[ASSIGN] -> [ID] (" + word_id + ")"); }
+
                             f.check('=');
                             String exp1_str = getEXP(f);
                             f.check(';');
@@ -490,21 +589,25 @@ public class BaliCompiler
                     // [BLOCK] -> '{' [STMT]* '}'
                     case '{':
                     {
-                        if (PRINT_COMPLILE) { System.out.println("\t[BLOCK]"); }
-                        if (PRINT_COMPLILE) { System.out.println("\t[ { ]"); }
+                            if (PRINT_COMPLILE) { System.out.println("\t[BLOCK]"); }
+                            if (PRINT_COMPLILE) { System.out.println("\t[ { ]"); }
+
                         String block_str = "";
                         while (!f.check('}'))
                         {
                             block_str += getSTMT(f);
                         }
-                        if (PRINT_COMPLILE) { System.out.println("\t[ } ]"); }
+
+                            if (PRINT_COMPLILE) { System.out.println("\t[ } ]"); }
+
                         stmt_str = block_str;
                         break;
                     }
                     // ';'
                     case ';':
                     {
-                        if (PRINT_COMPLILE) { System.out.println("\t[ ; ]"); }
+                            if (PRINT_COMPLILE) { System.out.println("\t[ ; ]"); }
+
                         break;
                     }
                     default:
@@ -516,14 +619,16 @@ public class BaliCompiler
                 throw new TokenizerException("Unexpected token found: " + f.peekAtKind() + " value: '" + peep_value(f) + "' @ line " + f.lineNo());
         }
         
-        if (PRINT_COMPLILE) { System.out.println("STMT end>"); }
+            if (PRINT_COMPLILE) { System.out.println("STMT end>"); }
+
         return stmt_str;
     }
 
     
     static String getEXP(SamTokenizer f) 
     {
-        if (PRINT_COMPLILE) { System.out.println("<EXP start"); }
+            if (PRINT_COMPLILE) { System.out.println("<EXP start"); }
+
         String return_str = "";
 
         switch (f.peekAtKind()) 
@@ -532,7 +637,9 @@ public class BaliCompiler
             case INTEGER:
             {
                 int i = f.getInt();
-                if (PRINT_COMPLILE) { System.out.println("\t[LITERAL] -> [INT] (" + i + ")\nEXP end>"); }
+
+                    if (PRINT_COMPLILE) { System.out.println("\t[LITERAL] -> [INT] (" + i + ")\nEXP end>"); }
+
                 return_str = "PUSHIMM " + i + "\n";
                 break;
             }
@@ -546,7 +653,7 @@ public class BaliCompiler
                     // [METHOD] '(' [ACTUALS]? ')'
                     if (f.check('('))
                     {
-                        if (PRINT_COMPLILE) { System.out.println("\t[METHOD] -> [ID] (" + word_str + ")"); }
+                            if (PRINT_COMPLILE) { System.out.println("\t[METHOD] -> [ID] (" + word_str + ")"); }
                         
                         // use PAIR class to get back 2 values
                         PAIR actuals_pair = new PAIR(0, "");
@@ -563,7 +670,7 @@ public class BaliCompiler
                         "PUSHIMM 0\n"
                         + exps_str
                         + "LINK\n"
-                        + "JSR " + word_str + ":\n"
+                        + "JSR " + word_str + "\n"
                         + "POPFBR\n"
                         + "ADDSP -" + param_count + "\n";
                         break;
@@ -571,7 +678,8 @@ public class BaliCompiler
                     // [LOCATION] -> [ID]
                     else
                     {
-                        if (PRINT_COMPLILE) { System.out.println("\t[LOCATION] -> [ID] (" + word_str + ")"); }
+                            if (PRINT_COMPLILE) { System.out.println("\t[LOCATION] -> [ID] (" + word_str + ")"); }
+
                         return_str = "PUSHOFF " + getOffset(word_str) + "\n";
                         break;
                     }     
@@ -579,7 +687,8 @@ public class BaliCompiler
                 // [LITERAL] -> "true" | "false"
                 else if (word_str == "true" || word_str == "false")
                 {
-                    if (PRINT_COMPLILE) { System.out.println("\t[LITERAL] (" + word_str + ")"); }
+                        if (PRINT_COMPLILE) { System.out.println("\t[LITERAL] (" + word_str + ")"); }
+
                     if (word_str == "true")
                     {
                         return_str = "PUSHIMM 1\n";
@@ -594,7 +703,8 @@ public class BaliCompiler
             case OPERATOR:
             {
                 f.match('(');
-                if (PRINT_COMPLILE) { System.out.println("\t[ ( ]"); }
+
+                    if (PRINT_COMPLILE) { System.out.println("\t[ ( ]"); }
 
                 String expr1 = "";
                 String expr2 = "";
@@ -646,21 +756,25 @@ public class BaliCompiler
                         default:
                             throw new TokenizerException("Unexpected operation found: " + peep_value(f) + "' @ line " + f.lineNo());
                     }
-                    if (PRINT_COMPLILE) { System.out.println("\t[MATH SYMBOL] ( " + c + " )"); }
+
+                        if (PRINT_COMPLILE) { System.out.println("\t[MATH SYMBOL] ( " + c + " )"); }
 
                     expr2 = getEXP(f);
                     return_str = expr1 + expr2 + operation;
                 }
 
                 f.match(')');
-                if (PRINT_COMPLILE) { System.out.println("\t[ ) ]"); }
+
+                    if (PRINT_COMPLILE) { System.out.println("\t[ ) ]"); }
+
                 break;
             }
             default:
                 throw new TokenizerException("Unexpected token found: " + f.peekAtKind() + " value: '" + peep_value(f) + "' @ line " + f.lineNo());
         }
 
-        if (PRINT_COMPLILE) { System.out.println("EXP end>"); }
+            if (PRINT_COMPLILE) { System.out.println("EXP end>"); }
+
         return return_str;
     }
 
@@ -668,7 +782,8 @@ public class BaliCompiler
     static PAIR getACTUALS(SamTokenizer f)
     {
         // [ACTUALS] -> [EXP] (',' [EXP])*
-        if (PRINT_COMPLILE) { System.out.println("<ACTUALS start"); }
+
+            if (PRINT_COMPLILE) { System.out.println("<ACTUALS start"); }
 
         int count = 1;
         String actuals_str = "";
@@ -680,10 +795,12 @@ public class BaliCompiler
             count++;
         }
 
-        if (PRINT_COMPLILE) { System.out.println("ACTUALS end>"); }
+            if (PRINT_COMPLILE) { System.out.println("ACTUALS end>"); }
+
         return new PAIR(count, actuals_str);
     }
 
+    // HELPER FUNCTIONS!!!
 
     static boolean isINT(String str)
     {
