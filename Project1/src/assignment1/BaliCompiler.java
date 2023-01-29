@@ -122,10 +122,10 @@ final class SYMBOL_TABLE
 
 public class BaliCompiler 
 {
-    static boolean PRINT_COMPLILE = false;
-    static boolean TRY_ALL_TESTCASES = true;
+    static boolean PRINT_COMPLILE = true;
+    static boolean TRY_ALL_TESTCASES = false;
     static List<Integer> test_case_exp = Arrays.asList(
-        0, 0, 0, 15, 90, 30, 123, 431, 120, 1597, 0, 0, 0, 15, 5, 71, 21);
+        0, 0, 0, 15, 90, 30, 123, 431, 120, 1597, 0, 0, 0, 15, 5, 71, 21, 7, 1066);
     static List<String> test_cases = Arrays.asList(
         "testcases/test1.bali", 
         "testcases/test2.bali",
@@ -143,7 +143,10 @@ public class BaliCompiler
         "testcases/good.break.bali",
         "testcases/good.expr-1.bali",
         "testcases/good.exprs.bali",
-        "testcases/good.two-methods.bali");
+        "testcases/good.two-methods.bali",
+        "testcases/marco_test1.bali",
+        "testcases/marco_test2.bali"
+        );
 
     public static void main(String[] args)
     {
@@ -157,7 +160,7 @@ public class BaliCompiler
         }
         else
         {
-            input_file = "testcases/test4.bali";
+            input_file = "testcases/marco_test3.bali";
             output_file = "output.sam";
         }
 
@@ -730,10 +733,26 @@ public class BaliCompiler
             }
             case WORD:
             {
+                // TODO: fix true false stuff
                 String word_str = f.getWord();
+                if (PRINT_COMPLILE) { System.out.println("word: '" + word_str + "'") ;}
 
+                // [LITERAL] -> "true" | "false"
+                if (word_str == "true" || word_str == "false")
+                {
+                        if (PRINT_COMPLILE) { System.out.println("\t[LITERAL] (" + word_str + ")"); }
+
+                    if (word_str == "true")
+                    {
+                        return_str = "PUSHIMM 1\n";
+                    }
+                    else if (word_str == "false")
+                    {
+                        return_str = "PUSHIMM 0\n";
+                    }
+                }
                 // [METHOD] or [LOCATION]
-                if (isID(word_str))
+                else if (isID(word_str))
                 {       
                     // [METHOD] '(' [ACTUALS]? ')'
                     if (f.check('('))
@@ -769,20 +788,7 @@ public class BaliCompiler
                         break;
                     }     
                 }
-                // [LITERAL] -> "true" | "false"
-                else if (word_str == "true" || word_str == "false")
-                {
-                        if (PRINT_COMPLILE) { System.out.println("\t[LITERAL] (" + word_str + ")"); }
-
-                    if (word_str == "true")
-                    {
-                        return_str = "PUSHIMM 1\n";
-                    }
-                    else if (word_str == "false")
-                    {
-                        return_str = "PUSHIMM 0\n";
-                    }
-                }
+                
                 break;
             }
             case OPERATOR:

@@ -1,0 +1,36 @@
+// expected result: ?
+
+int main()
+{
+    int t = true;
+
+    if ((t = 1))
+    {
+        t = t - 1;
+    }
+    else
+    {
+        t = 2;
+    }
+
+    if ((t = false))
+    {
+        t = t * 9999999;
+    }
+    else
+    {
+        t = 43;
+    }
+
+
+    if ((t = false))
+    {
+        t = 78;
+    }
+    else
+    {
+        t = 1;
+    }
+
+    return t;
+}
