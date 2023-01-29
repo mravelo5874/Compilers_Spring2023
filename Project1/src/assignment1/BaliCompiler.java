@@ -5,7 +5,10 @@ import edu.cornell.cs.sam.io.TokenizerException;
 import edu.cornell.cs.sam.io.Tokenizer.TokenType;
 
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.regex.Pattern;
+import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -96,7 +99,7 @@ final class SYMBOL_TABLE
             // check parameter
             if (parameters.contains(str))
             {
-                return -1 * (parameters.indexOf(str) + 1);
+                return (-1 * parameters.size()) + parameters.indexOf(str);
             }
             else if (locals.contains(str))
             {
@@ -120,9 +123,9 @@ final class SYMBOL_TABLE
 public class BaliCompiler 
 {
     static boolean PRINT_COMPLILE = false;
-    static boolean TRY_ALL_TESTCASES = false;
-    static List<Boolean> test_case_exp = Arrays.asList(
-        false, false, false, true, true, true, true, true, true, true, false, false, false, true, true, true, true);
+    static boolean TRY_ALL_TESTCASES = true;
+    static List<Integer> test_case_exp = Arrays.asList(
+        0, 0, 0, 15, 90, 30, 123, 431, 120, 1597, 0, 0, 0, 15, 5, 71, 21);
     static List<String> test_cases = Arrays.asList(
         "testcases/test1.bali", 
         "testcases/test2.bali",
@@ -134,13 +137,13 @@ public class BaliCompiler
         "testcases/test8.bali",
         "testcases/test9.bali",
         "testcases/test10.bali",
-        "examples/bad.exp-as-param.bali",
-        "examples/bad.expr-1.bali",
-        "examples/bad.expr-2.bali",
-        "examples/good.break.bali",
-        "examples/good.expr-1.bali",
-        "examples/good.exprs.bali",
-        "examples/good.two-methods.bali");
+        "testcases/bad.exp-as-param.bali",
+        "testcases/bad.expr-1.bali",
+        "testcases/bad.expr-2.bali",
+        "testcases/good.break.bali",
+        "testcases/good.expr-1.bali",
+        "testcases/good.exprs.bali",
+        "testcases/good.two-methods.bali");
 
     public static void main(String[] args)
     {
@@ -154,7 +157,7 @@ public class BaliCompiler
         }
         else
         {
-            input_file = "examples/good.expr-1.bali";
+            input_file = "testcases/test4.bali";
             output_file = "output.sam";
         }
 
@@ -169,6 +172,50 @@ public class BaliCompiler
         compile(input_file, output_file);
     }
 
+    // method to run sam code for running test cases
+    // borrows from: https://www.geeksforgeeks.org/java-lang-processbuilder-class-java/
+    static int run_sam_code()
+    {
+        int result = -1;
+
+        // creating list of commands
+        List<String> commands = new ArrayList<String>();
+        commands.add("java");
+        commands.add("-cp"); 
+        commands.add("SaM-2.6.2.jar");
+        commands.add("edu.cornell.cs.sam.ui.SamText");
+        commands.add("output.sam");
+
+        // creating the process
+        ProcessBuilder pb = new ProcessBuilder(commands);
+        pb.directory(new File(System.getProperty("user.dir")));
+
+        try
+        {
+            // start the process
+            Process process = pb.start();
+            // for reading the output from stream
+            BufferedReader stdInput = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String s = null;
+            // look for 'Exit Status:' in output stream
+            while ((s = stdInput.readLine()) != null) 
+            {
+                if (s.contains("Exit Status:"))
+                {
+                    s = s.replace("Exit Status: ", "");
+                    s = s.replace("\n", "");
+                    result = Integer.parseInt(s);
+                    return result;
+                }   
+            }
+        }
+        catch (Exception e)
+        {
+            System.out.println("[Exception] " + e.toString());
+        }
+
+        return result;
+    }
 
     static void test_and_report()
     {
@@ -177,14 +224,23 @@ public class BaliCompiler
         // iterate through each test case and attempt to run compile()
         for (int i = 0; i < total_testcases; i++)
         {
-            if (compile(test_cases.get(i), "output.sam") == test_case_exp.get(i))
+            // compile test case
+            compile(test_cases.get(i), "output.sam");
+
+            // run sam code
+            int result = run_sam_code();
+            System.out.println("result: " + result);
+            System.out.println("expected result: " + test_case_exp.get(i));
+            
+            // compare to expected result
+            if (result == test_case_exp.get(i))
             {
                 successful++;
                 System.out.println("[Test case " + (i+1) + " returned expected result]\n");
             }
             else
             {
-                System.out.println("[Test case " + (i+1) + " errored out]\n");
+                System.out.println("[Test case " + (i+1) + " failed. Returned unexpected result: " + result + "]\n");
             }
         }
         System.out.println("Successfully completed " + successful + "/" + total_testcases + " testcases.");
@@ -200,8 +256,8 @@ public class BaliCompiler
             SamTokenizer f = new SamTokenizer(file_name);
             String program = getPROGRAM(f);
             System.out.println("Compiler completed with no problems.");
-            //System.out.println("SaM_code: " + program);
             System.out.println("Writing to output file...");
+            // output to file
             write_to_file(output_file, program);
             return true; // return true if program compiled correctly
         } 
@@ -217,6 +273,9 @@ public class BaliCompiler
         {
             System.out.println("[Exception] " + e.getMessage());
         }
+
+        // output to file
+        write_to_file(output_file, "//error\nSTOP\n");
         return false; // return false if program errored out
     }
 
@@ -337,6 +396,14 @@ public class BaliCompiler
         {
             locals.addAll(getVAR_DECL(f, st));
         }
+        // create locals string
+        String locals_str = "";
+        for (STR_PAIR pair : locals) 
+        {
+            // only add to local string iff expression is not empty
+            if (pair.get_str_2() != "")
+                locals_str += pair.get_str_2() + "STOREOFF " + st.get_offset(pair.get_str_1(), f) + "\n";
+        }
 
         // get statements until return statement is found
         if (!f.check('}'))
@@ -360,17 +427,23 @@ public class BaliCompiler
             if (PRINT_COMPLILE) { System.out.println("BODY end>"); }
             if (PRINT_COMPLILE) { System.out.println("METH_DECL end>"); }
 
+        // reset latest break to check for illegal breaks
+        latest_break = "";
+            
+            if (PRINT_COMPLILE) { System.out.println("Latest break reset!"); }
+
         // SAM CODE FOR METHOD DECLARATION
         return
         id_str + ":\n" // label for method start
         + "ADDSP " + st.get_local_count() + "\n" // add space for local variables
+        + locals_str // assign locals
         + stmts_str // body stmts
+        + return_str // return exp
+        + "JUMP " + id_str + "_END\n" // label for method end
         + id_str + "_END:\n" // label for method end
         + "STOREOFF " + st.get_offset("rv", f) + "\n" // return value offset
         + "ADDSP -" + st.get_local_count() + "\n" // remove space for locals
-        + "JUMPIND\n" // return to calle
-        + return_str // return exp
-        + "JUMP " + id_str + "_END\n"; // label for method end
+        + "JUMPIND\n"; // return to calle
     }
 
 
@@ -483,6 +556,14 @@ public class BaliCompiler
                     case "if":
                     {
                             if (PRINT_COMPLILE) { System.out.println("\t[KEYWORD] (if)"); }
+                        
+                        // get labels for code creation
+                        String label_1 = getLABEL();
+                        String label_2 = getLABEL();
+                        String break_label = getBREAK();
+                        latest_break = break_label;
+    
+                            if (PRINT_COMPLILE) { System.out.println("Latest break set as '" + latest_break + "'"); }
 
                         f.check('(');
 
@@ -497,24 +578,30 @@ public class BaliCompiler
                         f.check("else");
                         String stmt2_str = getSTMT(f, st);
                         
-                        String label_1 = getLABEL();
-                        String label_2 = getLABEL();
-                        
                         // SAM CODE FOR IF ELSE
                         stmt_str = 
                             exp1_str 
                             + "JUMPC " + label_1 + "\n" 
                             + stmt2_str 
                             + "JUMP " + label_2 + "\n" 
-                            + label_1 + "\n" 
+                            + label_1 + ":\n" 
                             +  stmt1_str 
-                            + label_2 + "\n";
+                            + label_2 + ":\n"
+                            + break_label + ":\n";
                         break;
                     }
                     // "while" '(' [EXP] ')' [STMT]
                     case "while":
                     {
                             if (PRINT_COMPLILE) { System.out.println("\t[KEYWORD] (while)"); }
+                        
+                        // get labels for code creation
+                        String label_1 = getLABEL();
+                        String label_2 = getLABEL();
+                        String break_label = getBREAK();
+                        latest_break = break_label;
+
+                            if (PRINT_COMPLILE) { System.out.println("Latest break set as '" + latest_break + "'"); }
 
                         f.check('(');
 
@@ -526,18 +613,16 @@ public class BaliCompiler
                             if (PRINT_COMPLILE) { System.out.println("\t[ ) ]"); }
 
                         String stmt1_str = getSTMT(f, st);
-                        
-                        String label_1 = getLABEL();
-                        String label_2 = getLABEL();
 
                         // SAM CODE FOR WHILE
                         stmt_str = 
                             "JUMP " + label_1 + "\n"
-                            + label_2 + "\n"
+                            + label_2 + ":\n"
                             + stmt1_str
-                            + label_1 + "\n"
+                            + label_1 + ":\n"
                             + exp1_str
-                            + "JUMPC " + label_2 + "\n";
+                            + "JUMPC " + label_2 + "\n"
+                            + break_label + ":\n";
                         break;
                     }
                     // "break" ';'
@@ -547,8 +632,15 @@ public class BaliCompiler
 
                         f.check(';');
                         
-                        // TODO this
-                        stmt_str = "[break]\n";
+                        // check to make sure breaking here is legal
+                        if (latest_break != "")
+                        {
+                            stmt_str = "JUMP " + latest_break + "\n";
+                        }
+                        else
+                        {
+                            throw new TokenizerException("Illegal break found @ line " + f.lineNo());
+                        }
                         break;
                     }
                     default:
@@ -631,7 +723,7 @@ public class BaliCompiler
             {
                 int i = f.getInt();
 
-                    if (PRINT_COMPLILE) { System.out.println("\t[LITERAL] -> [INT] (" + i + ")\nEXP end>"); }
+                    if (PRINT_COMPLILE) { System.out.println("\t[LITERAL] -> [INT] (" + i + ")"); }
 
                 return_str = "PUSHIMM " + i + "\n";
                 break;
@@ -806,11 +898,20 @@ public class BaliCompiler
     }
 
     static int label_count = 0;
+    static int break_count = 0;
+    static String latest_break = "";
 
     static String getLABEL()
     {
-        String label = "auto_label_" + label_count;
+        String label = "auto_label_" + label_count ;
         label_count++;
+        return label;
+    }
+
+    static String getBREAK()
+    {
+        String label = "auto_break_" + break_count ;
+        break_count++;
         return label;
     }
 }
