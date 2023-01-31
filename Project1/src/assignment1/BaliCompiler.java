@@ -122,10 +122,10 @@ final class SYMBOL_TABLE
 
 public class BaliCompiler 
 {
-    static boolean PRINT_COMPLILE = true;
+    static boolean PRINT_COMPLILE = false;
     static boolean TRY_ALL_TESTCASES = false;
     static List<Integer> test_case_exp = Arrays.asList(
-        0, 0, 0, 15, 90, 30, 123, 431, 120, 1597, 0, 0, 0, 15, 5, 71, 21, 7, 1066);
+        0, 0, 0, 15, 90, 30, 123, 431, 120, 1597, 0, 0, 0, 15, 5, 71, 21, 7, 1066, 78, 0, 1, 65536, 0, 1, 0, 34, 1601, 479001600, 138);
     static List<String> test_cases = Arrays.asList(
         "testcases/test1.bali", 
         "testcases/test2.bali",
@@ -145,7 +145,18 @@ public class BaliCompiler
         "testcases/good.exprs.bali",
         "testcases/good.two-methods.bali",
         "testcases/marco_test1.bali",
-        "testcases/marco_test2.bali"
+        "testcases/marco_test2.bali",
+        "testcases/marco_test3.bali",
+        "testcases/marco_test4.bali",
+        "testcases/marco_test5.bali",
+        "testcases/marco_test6.bali",
+        "testcases/marco_test7.bali",
+        "testcases/marco_test8.bali",
+        "testcases/marco_test9.bali",
+        "testcases/marco_test10.bali",
+        "testcases/marco_test11.bali",
+        "testcases/marco_test12.bali",
+        "testcases/marco_test13.bali"
         );
 
     public static void main(String[] args)
@@ -153,26 +164,39 @@ public class BaliCompiler
         // get input and output file names
         String input_file;
         String output_file;
-        if (args.length > 1)
+
+        // get command-line arguments
+        if (args.length == 1)
+        {
+            // run testcases
+            if (args[0].equals("--test"))
+            {
+                System.out.print("Running testcases...\n");
+                test_and_report();
+            }
+            else
+            {
+                // print out program requirements
+                System.out.print("Program requires two commnad-line arguments: [input file (*.bali)] [output file (*.sam)]\n");
+            }
+        }
+        // normal compilation 
+        else if (args.length == 2)
         {
             input_file = args[0];
             output_file = args[1];
+            compile(input_file, output_file);
         }
         else
         {
-            input_file = "testcases/marco_test3.bali";
-            output_file = "output.sam";
+            // print out program requirements
+            System.out.print("Program requires two commnad-line arguments: [input file (*.bali)] [output file (*.sam)]\n");
+            
+            // remove this before submitting
+            // input_file = "testcases/marco_test13.bali";
+            // output_file = "output.sam";
+            // compile(input_file, output_file);
         }
-
-        // dev: try all test cases
-        if (TRY_ALL_TESTCASES)
-        {
-            test_and_report();
-            return;
-        }
-
-        // normal compilation
-        compile(input_file, output_file);
     }
 
     // method to run sam code for running test cases
@@ -232,7 +256,7 @@ public class BaliCompiler
 
             // run sam code
             int result = run_sam_code();
-            System.out.println("result: " + result);
+            System.out.println("program result: " + result);
             System.out.println("expected result: " + test_case_exp.get(i));
             
             // compare to expected result
@@ -262,6 +286,7 @@ public class BaliCompiler
             System.out.println("Writing to output file...");
             // output to file
             write_to_file(output_file, program);
+            System.out.println("Program written to: '" + output_file + "'.");
             return true; // return true if program compiled correctly
         } 
         catch (TokenizerException te)
@@ -349,6 +374,11 @@ public class BaliCompiler
         {
             program_str += getMETHOD_DECLARATION(f);
         }
+        // check to make sure that main() is declared
+        if (!program_str.contains("main:\n"))
+        {
+            throw new TokenizerException("No 'main' method was declared"); 
+        }
         return program_str;
     }
 
@@ -424,6 +454,12 @@ public class BaliCompiler
                     stmts_str += stmt_str;
                 }
             }
+        }
+
+        // throw error if no return statement is found
+        if (return_str == "")
+        {
+            throw new TokenizerException("No return statement found for method '" + id_str + "' @ line " + f.lineNo());
         }
 
             if (PRINT_COMPLILE) { System.out.println("\t[ } ]"); }
@@ -648,7 +684,7 @@ public class BaliCompiler
                     }
                     default:
                     {
-                        if (isID(word_id))
+                        if (isID(word_id, f))
                         {
                                 if (PRINT_COMPLILE) { System.out.println("\t[ASSIGN] -> [ID] (" + word_id + ")"); }
 
@@ -733,27 +769,25 @@ public class BaliCompiler
             }
             case WORD:
             {
-                // TODO: fix true false stuff
                 String word_str = f.getWord();
-                if (PRINT_COMPLILE) { System.out.println("word: '" + word_str + "'") ;}
 
                 // [LITERAL] -> "true" | "false"
-                if (word_str == "true" || word_str == "false")
+                if (word_str.equals("true"))
                 {
-                        if (PRINT_COMPLILE) { System.out.println("\t[LITERAL] (" + word_str + ")"); }
+                        if (PRINT_COMPLILE) { System.out.println("\t[LITERAL] -> 'true'") ;}
 
-                    if (word_str == "true")
-                    {
-                        return_str = "PUSHIMM 1\n";
-                    }
-                    else if (word_str == "false")
-                    {
-                        return_str = "PUSHIMM 0\n";
-                    }
+                    return_str = "PUSHIMM 1\n";
+                    break;
                 }
-                // [METHOD] or [LOCATION]
-                else if (isID(word_str))
-                {       
+                else if (word_str.equals("false"))
+                {
+                        if (PRINT_COMPLILE) { System.out.println("\t[LITERAL] -> 'false'") ;}
+
+                    return_str = "PUSHIMM 0\n";
+                    break;
+                }   
+                else if (isID(word_str, f))
+                {      
                     // [METHOD] '(' [ACTUALS]? ')'
                     if (f.check('('))
                     {
@@ -803,12 +837,12 @@ public class BaliCompiler
                 if (f.check('-'))
                 {
                     expr1 = getEXP(f, st);
-                    return_str = "PUSHIMM -" + expr1 + "\n";
+                    return_str = expr1 + "PUSHIMM -1\nTIMES\n";
                 }
                 else if (f.check('!'))
                 {
                     expr1 = getEXP(f, st);
-                    return_str = "NOT\n" + "PUSHIMM " + expr1 + "\n";
+                    return_str = expr1 + "NOT\n";
                 }
                 else
                 {
@@ -898,8 +932,16 @@ public class BaliCompiler
         return Pattern.matches("[0-9]+", str);
     }
 
-    static boolean isID(String str)
+    static List<String> reserved_words = Arrays.asList(
+        "int", "return", "if", "else", "while", "break", "true", "false"
+    );
+
+    static boolean isID(String str, SamTokenizer f)
     {
+        if (reserved_words.contains(str))
+        {
+            throw new TokenizerException("Used reserved word '" + str + "' as an identifier @ line " + f.lineNo());
+        }
         return Pattern.matches("[a-zA-Z]([a-zA-Z]|[0-9]|_)*$", str);
     }
 

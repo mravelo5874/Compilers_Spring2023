@@ -1,0 +1,21 @@
+// expected result: 479001600
+
+int main()
+{
+    int n = 12;
+    return factorial(n);
+}
+
+int factorial(int n)
+{
+    int out = 1;
+    if ((n < 2))
+    {
+        out = n;
+    }
+    else
+    {
+        out = (n * factorial((n - 1)));
+    }
+    return out;
+}

@@ -1,0 +1,7 @@
+// expected result: 0
+
+int main()
+{
+    int else = 123;
+    return else;
+}

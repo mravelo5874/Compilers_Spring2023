@@ -1,4 +1,4 @@
-// expected result: ?
+// expected result: 78
 
 int main()
 {
@@ -6,7 +6,7 @@ int main()
 
     if ((t = 1))
     {
-        t = t - 1;
+        t = (t - 1);
     }
     else
     {
@@ -15,7 +15,7 @@ int main()
 
     if ((t = false))
     {
-        t = t * 9999999;
+        t = (t * 99999);
     }
     else
     {

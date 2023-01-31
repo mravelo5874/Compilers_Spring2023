@@ -1,0 +1,14 @@
+// expected result: 1601
+
+int main()
+{
+    int n = 40;
+    int r = eulers(n);
+    return r;
+}
+
+int eulers(int n)
+{
+    int e = (((n * n) - n) + 41);
+    return e;
+}
