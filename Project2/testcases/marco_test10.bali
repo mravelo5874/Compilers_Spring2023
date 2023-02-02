@@ -1,0 +1,27 @@
+// expected result: 34
+
+int main()
+{
+    int fib_digit = 9;
+    int fib_num = calc_fib_num(fib_digit);
+    return fib_num;
+}
+
+int calc_fib_num(int n)
+{
+    int output;
+    int x1 = 0;
+    int x2 = 0;
+
+    if ((n < 2))
+    {
+        output = n;
+    }
+    else
+    {
+        x1 = calc_fib_num((n-1));
+        x2 = calc_fib_num((n-2));
+        output = (x1 + x2);
+    }
+    return output;
+}

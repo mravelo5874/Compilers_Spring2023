@@ -1,0 +1,27 @@
+// expected result: 0 (missing main)
+
+int hello()
+{
+    int this;
+    int is;
+    int a;
+    int fake;
+    int method;
+    return 0;
+}
+
+int world()
+{
+    int this;
+    int is;
+    int also;
+    int a;
+    int fake;
+    int method;
+    return 0;
+}
+
+int apple(int a, int p, int l, int e)
+{
+    return (((a * p) * l) * e);
+}

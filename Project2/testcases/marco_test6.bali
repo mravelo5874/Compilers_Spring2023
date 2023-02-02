@@ -1,0 +1,23 @@
+// expected result: 65536
+
+int main()
+{
+    int start = 2;
+    int end = recursive(start);
+    return end;
+}
+
+int recursive(int input)
+{
+    int output = 777;
+    if ((input < 9999))
+    {
+        output = recursive((input * input));
+    }
+    else
+    {
+        output = input;
+    }
+
+    return output;
+}
