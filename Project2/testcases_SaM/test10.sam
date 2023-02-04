@@ -1,0 +1,68 @@
+PUSHIMM 0
+LINK
+JSR main
+POPFBR
+STOP
+//method_separator
+main:
+ADDSP 1
+PUSHIMM 0
+PUSHIMM 17
+LINK
+JSR fibo
+POPFBR
+ADDSP -1
+STOREOFF 2
+PUSHOFF 2
+JUMP main_END
+main_END:
+STOREOFF -1
+ADDSP -1
+JUMPIND
+//method_separator
+fibo:
+ADDSP 1
+PUSHOFF -1
+PUSHIMM 1
+EQUAL
+JUMPC auto_label_16
+PUSHOFF -1
+PUSHIMM 2
+EQUAL
+JUMPC auto_label_18
+PUSHIMM 0
+PUSHOFF -1
+PUSHIMM 1
+SUB
+LINK
+JSR fibo
+POPFBR
+ADDSP -1
+PUSHIMM 0
+PUSHOFF -1
+PUSHIMM 2
+SUB
+LINK
+JSR fibo
+POPFBR
+ADDSP -1
+ADD
+STOREOFF 2
+JUMP auto_label_19
+auto_label_18:
+PUSHIMM 1
+STOREOFF 2
+auto_label_19:
+auto_break_9:
+JUMP auto_label_17
+auto_label_16:
+PUSHIMM 1
+STOREOFF 2
+auto_label_17:
+auto_break_8:
+PUSHOFF 2
+JUMP fibo_END
+fibo_END:
+STOREOFF -2
+ADDSP -1
+JUMPIND

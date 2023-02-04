@@ -1,0 +1,53 @@
+PUSHIMM 0
+LINK
+JSR main
+POPFBR
+STOP
+//method_separator
+main:
+ADDSP 1
+PUSHIMM 12
+STOREOFF 2
+PUSHIMM 0
+PUSHOFF 2
+LINK
+JSR factorial
+POPFBR
+ADDSP -1
+JUMP main_END
+main_END:
+STOREOFF -1
+ADDSP -1
+JUMPIND
+//method_separator
+factorial:
+ADDSP 1
+PUSHIMM 1
+STOREOFF 2
+PUSHOFF -1
+PUSHIMM 2
+LESS
+JUMPC auto_label_34
+PUSHOFF -1
+PUSHIMM 0
+PUSHOFF -1
+PUSHIMM 1
+SUB
+LINK
+JSR factorial
+POPFBR
+ADDSP -1
+TIMES
+STOREOFF 2
+JUMP auto_label_35
+auto_label_34:
+PUSHOFF -1
+STOREOFF 2
+auto_label_35:
+auto_break_17:
+PUSHOFF 2
+JUMP factorial_END
+factorial_END:
+STOREOFF -2
+ADDSP -1
+JUMPIND

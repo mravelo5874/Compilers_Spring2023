@@ -1,0 +1,14 @@
+PUSHIMM 0
+LINK
+JSR main
+POPFBR
+STOP
+//method_separator
+main:
+ADDSP 0
+PUSHIMM 0
+JUMP main_END
+main_END:
+STOREOFF -1
+ADDSP -0
+JUMPIND

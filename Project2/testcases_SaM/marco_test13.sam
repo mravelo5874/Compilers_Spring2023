@@ -1,0 +1,69 @@
+PUSHIMM 0
+LINK
+JSR main
+POPFBR
+STOP
+//method_separator
+main:
+ADDSP 0
+PUSHIMM 0
+PUSHIMM 9872934
+PUSHIMM 809784
+LINK
+JSR gcd
+POPFBR
+ADDSP -2
+JUMP main_END
+main_END:
+STOREOFF -1
+ADDSP -0
+JUMPIND
+//method_separator
+gcd:
+ADDSP 1
+PUSHIMM 0
+STOREOFF 2
+PUSHOFF -2
+PUSHIMM 0
+EQUAL
+JUMPC auto_label_36
+JUMP auto_label_38
+auto_label_39:
+PUSHOFF -2
+PUSHOFF -1
+GREATER
+JUMPC auto_label_40
+PUSHOFF -1
+PUSHOFF -2
+SUB
+STOREOFF -1
+JUMP auto_label_41
+auto_label_40:
+PUSHOFF -2
+PUSHOFF -1
+SUB
+STOREOFF -2
+auto_label_41:
+auto_break_20:
+auto_label_38:
+PUSHOFF -1
+PUSHIMM 0
+EQUAL
+NOT
+JUMPC auto_label_39
+auto_break_19:
+PUSHOFF -2
+STOREOFF 2
+JUMP auto_label_37
+auto_label_36:
+PUSHOFF -1
+STOREOFF 2
+JUMP auto_break_18
+auto_label_37:
+auto_break_18:
+PUSHOFF 2
+JUMP gcd_END
+gcd_END:
+STOREOFF -3
+ADDSP -1
+JUMPIND

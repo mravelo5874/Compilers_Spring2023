@@ -1,0 +1,32 @@
+PUSHIMM 0
+LINK
+JSR main
+POPFBR
+STOP
+//method_separator
+main:
+ADDSP 2
+PUSHIMM 10
+STOREOFF 2
+PUSHIMM 10
+PUSHIMM 20
+ADD
+STOREOFF 3
+JUMP auto_label_2
+auto_label_3:
+PUSHOFF 2
+PUSHIMM 1
+ADD
+STOREOFF 2
+auto_label_2:
+PUSHOFF 2
+PUSHOFF 3
+LESS
+JUMPC auto_label_3
+auto_break_1:
+PUSHOFF 2
+JUMP main_END
+main_END:
+STOREOFF -1
+ADDSP -2
+JUMPIND

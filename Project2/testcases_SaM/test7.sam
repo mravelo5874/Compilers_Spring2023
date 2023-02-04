@@ -1,0 +1,52 @@
+PUSHIMM 0
+LINK
+JSR main
+POPFBR
+STOP
+//method_separator
+main:
+ADDSP 4
+PUSHIMM 431
+STOREOFF 2
+PUSHIMM 123
+STOREOFF 3
+PUSHIMM 345
+STOREOFF 4
+PUSHOFF 2
+PUSHOFF 3
+LESS
+JUMPC auto_label_4
+PUSHOFF 3
+PUSHOFF 4
+LESS
+JUMPC auto_label_8
+PUSHOFF 4
+STOREOFF 5
+JUMP auto_label_9
+auto_label_8:
+PUSHOFF 3
+STOREOFF 5
+auto_label_9:
+auto_break_4:
+JUMP auto_label_5
+auto_label_4:
+PUSHOFF 2
+PUSHOFF 4
+LESS
+JUMPC auto_label_6
+PUSHOFF 4
+STOREOFF 5
+JUMP auto_label_7
+auto_label_6:
+PUSHOFF 2
+STOREOFF 5
+auto_label_7:
+auto_break_3:
+auto_label_5:
+auto_break_2:
+PUSHOFF 5
+JUMP main_END
+main_END:
+STOREOFF -1
+ADDSP -4
+JUMPIND

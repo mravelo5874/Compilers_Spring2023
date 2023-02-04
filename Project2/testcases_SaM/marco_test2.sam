@@ -1,0 +1,76 @@
+PUSHIMM 0
+LINK
+JSR main
+POPFBR
+STOP
+//method_separator
+main:
+ADDSP 1
+PUSHIMM 2
+STOREOFF 2
+PUSHIMM 0
+PUSHOFF 2
+LINK
+JSR super_while
+POPFBR
+ADDSP -1
+STOREOFF 2
+PUSHOFF 2
+JUMP main_END
+main_END:
+STOREOFF -1
+ADDSP -1
+JUMPIND
+//method_separator
+super_while:
+ADDSP 0
+JUMP auto_label_22
+auto_label_23:
+PUSHIMM 0
+PUSHOFF -1
+LINK
+JSR triple
+POPFBR
+ADDSP -1
+STOREOFF -1
+PUSHIMM 0
+PUSHOFF -1
+LINK
+JSR half
+POPFBR
+ADDSP -1
+STOREOFF -1
+auto_label_22:
+PUSHOFF -1
+PUSHIMM 999
+LESS
+JUMPC auto_label_23
+auto_break_11:
+PUSHOFF -1
+JUMP super_while_END
+super_while_END:
+STOREOFF -2
+ADDSP -0
+JUMPIND
+//method_separator
+triple:
+ADDSP 0
+PUSHOFF -1
+PUSHIMM 3
+TIMES
+JUMP triple_END
+triple_END:
+STOREOFF -2
+ADDSP -0
+JUMPIND
+//method_separator
+half:
+ADDSP 0
+PUSHOFF -1
+PUSHIMM 2
+DIV
+JUMP half_END
+half_END:
+STOREOFF -2
+ADDSP -0
+JUMPIND

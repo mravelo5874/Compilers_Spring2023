@@ -1,0 +1,53 @@
+PUSHIMM 0
+LINK
+JSR main
+POPFBR
+STOP
+//method_separator
+main:
+ADDSP 2
+PUSHIMM 2
+STOREOFF 2
+PUSHIMM 0
+PUSHOFF 2
+LINK
+JSR recursive
+POPFBR
+ADDSP -1
+STOREOFF 3
+PUSHOFF 3
+JUMP main_END
+main_END:
+STOREOFF -1
+ADDSP -2
+JUMPIND
+//method_separator
+recursive:
+ADDSP 1
+PUSHIMM 777
+STOREOFF 2
+PUSHOFF -1
+PUSHIMM 9999
+LESS
+JUMPC auto_label_30
+PUSHOFF -1
+STOREOFF 2
+JUMP auto_label_31
+auto_label_30:
+PUSHIMM 0
+PUSHOFF -1
+PUSHOFF -1
+TIMES
+LINK
+JSR recursive
+POPFBR
+ADDSP -1
+STOREOFF 2
+auto_label_31:
+auto_break_15:
+PUSHOFF 2
+JUMP recursive_END
+recursive_END:
+STOREOFF -2
+ADDSP -1
+JUMPIND

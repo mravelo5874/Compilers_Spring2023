@@ -1,0 +1,56 @@
+PUSHIMM 0
+LINK
+JSR main
+POPFBR
+STOP
+//method_separator
+main:
+ADDSP 1
+PUSHIMM 1
+STOREOFF 2
+PUSHOFF 2
+PUSHIMM 1
+EQUAL
+JUMPC auto_label_24
+PUSHIMM 2
+STOREOFF 2
+JUMP auto_label_25
+auto_label_24:
+PUSHOFF 2
+PUSHIMM 1
+SUB
+STOREOFF 2
+auto_label_25:
+auto_break_12:
+PUSHOFF 2
+PUSHIMM 0
+EQUAL
+JUMPC auto_label_26
+PUSHIMM 43
+STOREOFF 2
+JUMP auto_label_27
+auto_label_26:
+PUSHOFF 2
+PUSHIMM 99999
+TIMES
+STOREOFF 2
+auto_label_27:
+auto_break_13:
+PUSHOFF 2
+PUSHIMM 0
+EQUAL
+JUMPC auto_label_28
+PUSHIMM 1
+STOREOFF 2
+JUMP auto_label_29
+auto_label_28:
+PUSHIMM 78
+STOREOFF 2
+auto_label_29:
+auto_break_14:
+PUSHOFF 2
+JUMP main_END
+main_END:
+STOREOFF -1
+ADDSP -1
+JUMPIND
