@@ -14,6 +14,6 @@ public class ConverterException extends RuntimeException {
 	/* Error Retrieval */
 	public String toString() 
     { 
-        return "[CONVERTER ERROR] " + msg + " @ line " + line; 
+        return "[CONVERTER ERROR] " + msg + " @ line " + line + " of .sam file."; 
     }
 }

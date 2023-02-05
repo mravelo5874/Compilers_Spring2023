@@ -54,7 +54,7 @@ public class BaliX86Compiler
             
             // TODO remove this before submitting
             input_file = "testcases/marco_test1.bali";
-            output_file = "";
+            output_file = "output.asm";
             compile(input_file, output_file);
         }
     }
@@ -72,20 +72,22 @@ public class BaliX86Compiler
 
             // convert sam code to x86
             System.out.println("Starting sam to x86 converter...");
-            SaM_to_x86 tox86 = new SaM_to_x86(sam_program);
-            String x86_program = tox86.convert_code();
+            String x86_program = SaM_to_x86.convert_code(sam_program);
             System.out.println("Converter completed with no problems.");
             
-            // TODO uncomment this 
             // output to file
-            //System.out.println("Writing to output file...");
-            //write_to_file(output_file, sam_program);
-            //System.out.println("Program written to: '" + output_file + "'.");
+            System.out.println("Writing to output file...");
+            write_to_file(output_file, x86_program);
+            System.out.println("Program written to: '" + output_file + "'.");
             return true; // return true if program compiled correctly
         } 
         catch (TokenizerException te)
         {
             System.out.println("[TokenizerException] " + te.toString());
+        }
+        catch (ConverterException ce)
+        {
+            System.out.println(ce.toString());
         }
         catch (IOException ioe)
         {
