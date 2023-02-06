@@ -1,5 +1,7 @@
 %include "io.inc"
 
+section .data
+	res db 'result: ', 0
 section .text
 	global CMAIN
 CMAIN:
@@ -7,12 +9,15 @@ CMAIN:
 	mov ebp, esp
 	call main
 	add esp, 4
+	PRINT_STRING res
 	PRINT_DEC 4, eax
 	NEWLINE
 	pop ebp
 	ret
 
 main:
+	push ebp
+	mov ebp, esp
 	mov dword [ebp-4], 0
 	mov dword [ebp-8], 0
 	mov dword [ebp-12], 0
@@ -40,7 +45,9 @@ main_end:
 	pop ebp
 	ret
 
-addThemNums:
+addthemnums:
+	push ebp
+	mov ebp, esp
 	mov dword [ebp-4], 0
 	mov dword eax, [ebp+8]
 	push eax
@@ -54,7 +61,7 @@ addThemNums:
 	mov dword eax, [ebp-4]
 	push eax
 	jmp addthemnums_end
-addThemNums_end:
+addthemnums_end:
 	mov eax, 1
 	pop ebp
 	ret

@@ -53,7 +53,7 @@ public class BaliX86Compiler
             System.out.print("Program requires two commnad-line arguments: [input file (*.bali)] [output file (*.asm)]\n");
             
             // TODO remove this before submitting
-            input_file = "testcases/marco_test1.bali";
+            input_file = "testcases/marco_test14.bali";
             output_file = "output.asm";
             compile(input_file, output_file);
         }

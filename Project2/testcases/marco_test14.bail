@@ -1,0 +1,11 @@
+// expected result: 2
+
+int main()
+{
+    return simple(1);
+}
+
+int simple(int i)
+{
+    return (i + 1);
+}

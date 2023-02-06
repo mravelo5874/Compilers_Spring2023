@@ -15,13 +15,19 @@ public class SaM_to_x86
         // start with required x86 program init
         String program_code = 
         "%include \"io.inc\"\n\n" +
+
+        "section .data\n" +
+        "\tres db 'result: ', 0\n" +
+
         "section .text\n" +
         "\tglobal CMAIN\n" +
+
         "CMAIN:\n" +
         "\tpush ebp\n" + // set up the frame base register
         "\tmov ebp, esp\n" +
         "\tcall main\n" + // call the main function
         "\tadd esp, 4\n" + // pop parameter
+        "\tPRINT_STRING res\n" +
         "\tPRINT_DEC 4, eax\n" + // print return from main
         "\tNEWLINE\n" +
         "\tpop ebp\n" + // restore frame base register and return
@@ -78,8 +84,9 @@ public class SaM_to_x86
         //System.out.println("method lines: " + lines.length);
 
         // set method name as first line
-        String x86_code = lines[0] + "\n";
-
+        String x86_code = lines[0].toLowerCase() + "\n";
+        x86_code += "\tpush ebp\n" + "\tmov ebp, esp\n";
+        
         int count = 0;
         for (String l : lines) 
         {
@@ -115,7 +122,7 @@ public class SaM_to_x86
         }
 
         // add method end code
-        x86_code += lines[0].replace(":", "_end:\n");
+        x86_code += lines[0].replace(":", "_end:\n").toLowerCase();
         x86_code += "\tmov eax, 1\n" + "\tpop ebp\n" + "\tret\n\n";
 
         // return method code
@@ -157,7 +164,7 @@ public class SaM_to_x86
 
             case "LINK":    return "\tpush ebp\n";
             case "POPFBR":  return "\tmov ebp, esp\n";
-            case "STOP":    return "";
+            case "STOP":    return "END";
 
             default:
                 throw new ConverterException("Unexpected line part '" + p + "'" , current_line);

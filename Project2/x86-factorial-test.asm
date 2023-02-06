@@ -8,6 +8,7 @@ section .data
 section .text
     global CMAIN
 CMAIN:
+    mov ebp, esp; for correct debugging
     push ebp; set up the frame base register
     mov ebp, esp; 
     
