@@ -3,13 +3,13 @@
 section .text
 	global CMAIN
 CMAIN:
-	push ebp;
-	mov ebp, esp;
+	push ebp
+	mov ebp, esp
 	call main
-	add esp, 4;
+	add esp, 4
 	PRINT_DEC 4, eax
 	NEWLINE
-	pop ebp;
+	pop ebp
 	ret
 
 main:
@@ -29,23 +29,22 @@ main:
 	mov dword eax, [ebp-8]
 	push eax
 	push ebp
-	call addThemNums
+	call addthemnums
 	mov ebp, esp
 	mov dword [ebp-12], eax
 	mov dword eax, [ebp-12]
 	push eax
-	jump main_END
-	pop ebp
-	ret
+	jmp main_end
 main_end:
-	mov eax, 1	pop ebp
+	mov eax, 1
+	pop ebp
 	ret
 
 addThemNums:
 	mov dword [ebp-4], 0
-	mov dword eax, [ebp8]
+	mov dword eax, [ebp+8]
 	push eax
-	mov dword eax, [ebp12]
+	mov dword eax, [ebp+12]
 	push eax
 	pop eax
 	pop ebx
@@ -54,10 +53,9 @@ addThemNums:
 	mov dword [ebp-4], eax
 	mov dword eax, [ebp-4]
 	push eax
-	jump addThemNums_END
-	pop ebp
-	ret
+	jmp addthemnums_end
 addThemNums_end:
-	mov eax, 1	pop ebp
+	mov eax, 1
+	pop ebp
 	ret
 

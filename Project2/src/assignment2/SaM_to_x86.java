@@ -7,7 +7,8 @@ import java.util.List;
 
 public class SaM_to_x86 
 {
-    private static int current_line = -1;
+    private static int current_line = -1;   // current line in sam code
+    private static String next_jumpc = "";  // next jump compare to use
 
     public static String convert_code(String sam_code)
     {
@@ -17,13 +18,13 @@ public class SaM_to_x86
         "section .text\n" +
         "\tglobal CMAIN\n" +
         "CMAIN:\n" +
-        "\tpush ebp;\n" + // set up the frame base register
-        "\tmov ebp, esp;\n" +
+        "\tpush ebp\n" + // set up the frame base register
+        "\tmov ebp, esp\n" +
         "\tcall main\n" + // call the main function
-        "\tadd esp, 4;\n" + // pop parameter
+        "\tadd esp, 4\n" + // pop parameter
         "\tPRINT_DEC 4, eax\n" + // print return from main
         "\tNEWLINE\n" +
-        "\tpop ebp;\n" + // restore frame base register and return
+        "\tpop ebp\n" + // restore frame base register and return
         "\tret\n\n";
 
         // remove sam code init
@@ -112,11 +113,10 @@ public class SaM_to_x86
             // increment line count
             count++;
         }
-        x86_code += "\tpop ebp\n" + "\tret\n";
 
         // add method end code
         x86_code += lines[0].replace(":", "_end:\n");
-        x86_code += "\tmov eax, 1" + "\tpop ebp\n" + "\tret\n\n";
+        x86_code += "\tmov eax, 1\n" + "\tpop ebp\n" + "\tret\n\n";
 
         // return method code
         return x86_code;
@@ -150,9 +150,10 @@ public class SaM_to_x86
             case "AND":     return "\tpop eax\n" + "\tpop ebx\n" + "\tand eax, ebx\n" + "\tpush eax\n";
             case "OR":      return "\tpop eax\n" + "\tpop ebx\n" + "\tor eax, ebx\n" + "\tpush eax\n";
 
-            case "LESS":    return "\t[less not implemented]\n";
-            case "GREATER": return "\t[greater not implemented]\n";
-            case "EQUAL":   return "\t[equal not implemented]\n";
+            case "LESS":        next_jumpc = "jl";    
+            case "GREATER":     next_jumpc = "jg";
+            case "EQUAL":       next_jumpc = "je";
+                return "\tpop eax\n" + "\tpop ebx\n" + "\tcmp eax, ebx\n" + "\tpush eax\n";
 
             case "LINK":    return "\tpush ebp\n";
             case "POPFBR":  return "\tmov ebp, esp\n";
@@ -165,16 +166,18 @@ public class SaM_to_x86
 
     private static String convert_2_part(INT_PAIR ip, String p1, String p2)
     {
-        // find out what sam command part 1 is
+        p2 = p2.toLowerCase();
+
+        // match part 1 and add respective code
         switch (p1)
         {
             case "ADDSP":       return get_add_space_code(p2);
             case "PUSHIMM":     return "\tmov dword eax, " + p2 + "\n" + "\tpush eax\n";
             case "STOREOFF":    return "\tmov dword [ebp" + convert_to_ebp_offset(ip, p2) + "], eax\n";
             case "PUSHOFF":     return "\tmov dword eax, [ebp" + convert_to_ebp_offset(ip, p2) + "]\n" + "\tpush eax\n";
-            case "JUMP":        return "\tjump " + p2 + "\n";
-            case "JUMPC":       return "\t[jumpc not implemented]\n";
-            case "JUMPIND":     return "\t[jumpind not implemented]\n";
+            case "JUMP":        return "\tjmp " + p2 + "\n";
+            case "JUMPC":       return "\t" + next_jumpc + " " + p2 + "\n";
+            case "JUMPIND":     return "\tpop ebp\n" + "\tret\n";
             case "JSR":         return "\tcall " + p2 + "\n";
 
             default:
@@ -205,7 +208,10 @@ public class SaM_to_x86
         if (num > 0)
         {
             int ebp_offset =  (num) * -4;
-            return String.valueOf(ebp_offset);
+            String s = String.valueOf(ebp_offset);
+            if (ebp_offset > 0)
+                s = "+" + s;
+            return s;
         }
         // throw error?
         throw new ConverterException("Error attempting to convert '" + num + "' to ebp offset value." , current_line);
@@ -214,21 +220,27 @@ public class SaM_to_x86
     private static String convert_to_ebp_offset(INT_PAIR ip, String num)
     {
         int i = Integer.parseInt(num);
+        int ebp_offset = 0;
 
         // if int is positive, it is a local var
         if (i > 0)
         {
-            int ebp_offset =  (i - 1) * -4;
-            return String.valueOf(ebp_offset);
+            ebp_offset =  (i - 1) * -4;
         }
         // if int is negative, it is a parameter
         else if (i < 0)
         {
-            int ebp_offset =  (i + ip.get_int_1() + 2) * 4;
-            return String.valueOf(ebp_offset);
+            ebp_offset =  (i + ip.get_int_1() + 2) * 4;
+        }
+        else
+        {
+            // throw error?
+            throw new ConverterException("Error attempting to convert '" + num + "' to ebp offset value." , current_line);
         }
 
-        // throw error?
-        throw new ConverterException("Error attempting to convert '" + num + "' to ebp offset value." , current_line);
+        String s = String.valueOf(ebp_offset);
+        if (ebp_offset > 0)
+                s = "+" + s;
+            return s;
     }
 }
