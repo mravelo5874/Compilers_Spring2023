@@ -1,11 +1,11 @@
-// expected result: 2
+// expected result: 4
 
 int main()
 {
-    return simple(1);
+    return simple(2);
 }
 
-int simple(int i)
+int simple(int n)
 {
-    return (i + 1);
+    return (n * 2);
 }

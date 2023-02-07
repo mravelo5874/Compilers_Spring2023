@@ -9,6 +9,13 @@ public class SaM_to_x86
 {
     private static int current_line = -1;   // current line in sam code
     private static String next_jumpc = "";  // next jump compare to use
+    private static boolean ADD_DEBUG_PRINTS = false; // used to print to SASM console for debugging
+    private static String DEBUG_PRINT_EAX =     "\n" + "\tPRINT_STRING eax_v\n" + "\tPRINT_DEC 4, eax\n" + "\tNEWLINE\n\n"; // string used for printing eax value
+    private static String DEBUG_PRINT_EPB =     "\n" + "\tPRINT_STRING ebp_v\n" + "\tPRINT_DEC 4, ebp\n" + "\tNEWLINE\n\n"; // string used for printing epb value
+    private static String DEBUG_PRINT_ESP =     "\n" + "\tPRINT_STRING esp_v\n" + "\tPRINT_DEC 4, esp\n" + "\tNEWLINE\n\n"; // string used for printing esp value
+    private static String DEBUG_PRINT_START =   "\n" + "\tPRINT_STRING m_start\n" + "\tNEWLINE\n\n"; // print starting new method
+    private static String DEBUG_PRINT_END =     "\n" + "\tPRINT_STRING m_end\n" + "\tNEWLINE\n\n"; // print ending method
+    private static String DEBUG_PRINT_STACK =   "\n" + "\tPRINT_STRING stack\n" + "\tpop ebx\n" + "\tPRINT_DEC 4, ebx\n" + "\tpush ebx\n" + "\tNEWLINE\n\n"; // print top of stack
 
     public static String convert_code(String sam_code)
     {
@@ -18,18 +25,25 @@ public class SaM_to_x86
 
         "section .data\n" +
         "\tres db 'result: ', 0\n" +
+        "\teax_v db 'eax val: ', 0\n" +
+        "\tebp_v db 'ebp val: ', 0\n" +
+        "\tesp_v db 'esp val: ', 0\n" +
+        "\tm_start db 'start method', 0\n" +
+        "\tm_end db 'end method', 0\n" +
+        "\tstack db 'stack: ', 0\n" +
 
         "section .text\n" +
         "\tglobal CMAIN\n" +
 
         "CMAIN:\n" +
         "\tpush ebp\n" + // set up the frame base register
-        "\tmov ebp, esp\n" +
+        "\tmov ebp, esp\n\n" +
+
         "\tcall main\n" + // call the main function
-        "\tadd esp, 4\n" + // pop parameter
         "\tPRINT_STRING res\n" +
         "\tPRINT_DEC 4, eax\n" + // print return from main
-        "\tNEWLINE\n" +
+        "\tNEWLINE\n\n" +
+
         "\tpop ebp\n" + // restore frame base register and return
         "\tret\n\n";
 
@@ -81,14 +95,33 @@ public class SaM_to_x86
     {
         // split into sam code lines
         String[] lines = s.split("\n");
-        //System.out.println("method lines: " + lines.length);
+        List<String> line_list = new ArrayList<String>();
+        for (String l : lines)
+        {
+            // remove any "PUSHIMM 0" used as return values for method uses
+            if (!l.contains("//rv"))
+            {
+                line_list.add(l);
+            }
+        }
 
         // set method name as first line
         String x86_code = lines[0].toLowerCase() + "\n";
-        x86_code += "\tpush ebp\n" + "\tmov ebp, esp\n";
+        
+        // print to console for debugging
+        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_START; }
+        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EPB; }
+        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_ESP; }
+        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_STACK; }
+
+        x86_code += "\tpush ebp\n" + "\tmov ebp, esp\n\n";
+
+        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EPB; }
+        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_ESP; }
+        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_STACK; }
         
         int count = 0;
-        for (String l : lines) 
+        for (String l : line_list) 
         {
             // skip first method line (method name)
             if (count == 0)
@@ -106,11 +139,19 @@ public class SaM_to_x86
             {
                 String p1 = convert_1_part(parts[0]);
                 x86_code += p1;
+
+                // print to console for debugging
+                if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EAX; }
+                if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_STACK; }
             }
             else if (parts.length == 2)
             {
                 String p2 = convert_2_part(ip, parts[0], parts[1]);
                 x86_code += p2;
+
+                // print to console for debugging
+                if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EAX; }
+                if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_STACK; }
             }
             else
             {
@@ -121,9 +162,23 @@ public class SaM_to_x86
             count++;
         }
 
+
         // add method end code
         x86_code += lines[0].replace(":", "_end:\n").toLowerCase();
-        x86_code += "\tmov eax, 1\n" + "\tpop ebp\n" + "\tret\n\n";
+
+        // print to console for debugging
+        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_END; }
+        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EPB; }
+        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_ESP; }
+        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_STACK; }
+
+        x86_code += "\tpop eax\n" + "\tpop ebp\n";
+        
+        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EPB; }
+        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_ESP; }
+        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_STACK; }
+
+        x86_code += "\tret\n\n";
 
         // return method code
         return x86_code;
@@ -162,9 +217,9 @@ public class SaM_to_x86
             case "EQUAL":       next_jumpc = "je";
                 return "\tpop eax\n" + "\tpop ebx\n" + "\tcmp eax, ebx\n" + "\tpush eax\n";
 
-            case "LINK":    return "\tpush ebp\n";
-            case "POPFBR":  return "\tmov ebp, esp\n";
-            case "STOP":    return "END";
+            case "LINK":    return ""; // "\tpush ebp\n";
+            case "POPFBR":  return ""; // "\tmov ebp, esp\n";
+            case "STOP":    return "";
 
             default:
                 throw new ConverterException("Unexpected line part '" + p + "'" , current_line);

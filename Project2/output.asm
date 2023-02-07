@@ -2,67 +2,55 @@
 
 section .data
 	res db 'result: ', 0
+	eax_v db 'eax val: ', 0
+	ebp_v db 'ebp val: ', 0
+	esp_v db 'esp val: ', 0
+	m_start db 'start method', 0
+	m_end db 'end method', 0
+	stack db 'stack: ', 0
 section .text
 	global CMAIN
 CMAIN:
 	push ebp
 	mov ebp, esp
+
 	call main
-	add esp, 4
 	PRINT_STRING res
 	PRINT_DEC 4, eax
 	NEWLINE
+
 	pop ebp
 	ret
 
 main:
 	push ebp
 	mov ebp, esp
-	mov dword [ebp-4], 0
-	mov dword [ebp-8], 0
-	mov dword [ebp-12], 0
-	mov dword eax, 3
+
+	mov dword eax, 2
 	push eax
-	mov dword [ebp-4], eax
-	mov dword eax, 4
-	push eax
-	mov dword [ebp-8], eax
-	mov dword eax, 0
-	push eax
-	mov dword eax, [ebp-4]
-	push eax
-	mov dword eax, [ebp-8]
-	push eax
-	push ebp
-	call addthemnums
-	mov ebp, esp
-	mov dword [ebp-12], eax
-	mov dword eax, [ebp-12]
-	push eax
+	call simple
 	jmp main_end
+        push eax
 main_end:
-	mov eax, 1
+	pop eax
 	pop ebp
 	ret
 
-addthemnums:
+simple:
 	push ebp
 	mov ebp, esp
-	mov dword [ebp-4], 0
+
 	mov dword eax, [ebp+8]
 	push eax
-	mov dword eax, [ebp+12]
+	mov dword eax, 2
 	push eax
 	pop eax
 	pop ebx
-	add eax, ebx
+	imul eax, ebx
 	push eax
-	mov dword [ebp-4], eax
-	mov dword eax, [ebp-4]
-	push eax
-	jmp addthemnums_end
-addthemnums_end:
-	mov eax, 1
+	jmp simple_end
+simple_end:
+	pop eax
 	pop ebp
 	ret
 

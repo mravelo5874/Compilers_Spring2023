@@ -53,7 +53,7 @@ public class BaliX86Compiler
             System.out.print("Program requires two commnad-line arguments: [input file (*.bali)] [output file (*.asm)]\n");
             
             // TODO remove this before submitting
-            input_file = "testcases/marco_test14.bali";
+            input_file = "testcases/marco_test14.bail";
             output_file = "output.asm";
             compile(input_file, output_file);
         }
@@ -568,7 +568,7 @@ public class BaliX86Compiler
 
                         // SAM CODE FOR METHOD
                         return_str = 
-                        "PUSHIMM 0\n"
+                        "PUSHIMM 0 //rv\n" // comment indicator for x86
                         + exps_str
                         + "LINK\n"
                         + "JSR " + word_str + "\n"
