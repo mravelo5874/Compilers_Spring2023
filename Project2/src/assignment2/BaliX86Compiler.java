@@ -53,7 +53,7 @@ public class BaliX86Compiler
             System.out.print("Program requires two commnad-line arguments: [input file (*.bali)] [output file (*.asm)]\n");
             
             // TODO remove this before submitting
-            input_file = "testcases/marco_test14.bail";
+            input_file = "testcases/marco_test1.bali";
             output_file = "output.asm";
             compile(input_file, output_file);
         }
@@ -69,6 +69,8 @@ public class BaliX86Compiler
             SamTokenizer f = new SamTokenizer(file_name);
             String sam_program = getPROGRAM(f);
             System.out.println("Compiler completed with no problems.");
+
+            System.out.println("sam_program: " + sam_program);
 
             // convert sam code to x86
             System.out.println("Starting sam to x86 converter...");
