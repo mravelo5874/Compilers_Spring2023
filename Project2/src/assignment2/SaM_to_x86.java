@@ -9,7 +9,7 @@ public class SaM_to_x86
 {
     private static int current_line = -1;   // current line in sam code
     private static String next_jumpc = "";  // next jump compare to use
-    private static boolean ADD_DEBUG_PRINTS = true; // used to print to SASM console for debugging
+    private static boolean ADD_DEBUG_PRINTS = false; // used to print to SASM console for debugging
     private static String DEBUG_PRINT_EAX =     "\n" + "\tPRINT_STRING eax_v\n" + "\tPRINT_DEC 4, eax\n" + "\tNEWLINE\n\n"; // string used for printing eax value
     private static String DEBUG_PRINT_EBX =     "\n" + "\tPRINT_STRING ebx_v\n" + "\tPRINT_DEC 4, ebx\n" + "\tNEWLINE\n\n"; // string used for printing eax value
     private static String DEBUG_PRINT_EPB =     "\n" + "\tPRINT_STRING ebp_v\n" + "\tPRINT_DEC 4, ebp\n" + "\tNEWLINE\n\n"; // string used for printing epb value
@@ -48,7 +48,7 @@ public class SaM_to_x86
         "\tpush ebp\n" + // set up the frame base register
         "\tmov ebp, esp\n\n" +
 
-        "\tcall main\n" + // call the main function
+        "\tcall _main\n" + // call the main function
         "\tPRINT_STRING res\n" +
         "\tPRINT_DEC 4, eax\n" + // print return from main
         "\tNEWLINE\n\n" +
@@ -115,7 +115,7 @@ public class SaM_to_x86
         }
 
         // set method name as first line
-        String x86_code = lines[0].toLowerCase() + "\n";
+        String x86_code = "_" + lines[0].toLowerCase() + "\n";
         
         // print to console for debugging
         if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_START; }
@@ -171,13 +171,19 @@ public class SaM_to_x86
 
 
         // add method end code
-        x86_code += lines[0].replace(":", "_end:\n").toLowerCase();
+        x86_code += "_" + lines[0].replace(":", "_end:\n").toLowerCase();
 
         // print to console for debugging
         if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EAX; }
         if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EBX; }
         if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_STACK; }
         if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_END; }
+
+        // add pop into eax only if not in main method
+        if (!lines[0].toLowerCase().equals("main:"))
+        {
+            x86_code += "\tpop eax\n";
+        }
         
         x86_code += "\tpop ebp\n" + "\tret\n\n";
 
@@ -205,22 +211,24 @@ public class SaM_to_x86
         // find out what sam command part is
         switch (p)
         {
-            case "NOT":     return "\tnot eax\n";
-            case "ADD":     return "\tpop ebx\n" + "\tadd eax, ebx\n";
-            case "SUB":     return "\tpop ebx\n" + "\tsub eax, ebx\n";
-            case "TIMES":   return "\tpop ebx\n" + "\timul eax, ebx\n";
-            case "DIV":     return "\tpop ebx\n" + "\tidiv eax, ebx\n";
-            case "AND":     return "\tpop ebx\n" + "\tand eax, ebx\n";
-            case "OR":      return "\tpop ebx\n" + "\tor eax, ebx\n";
+            case "NOT":     return "\tpop eax\n" + "\tnot eax\n" + "\tpush eax\n";
+
+            case "ADD":     return "\tpop eax\n" + "\tpop ebx\n" + "\tadd eax, ebx\n" + "\tpush eax\n";
+            case "SUB":     return "\tpop eax\n" + "\tpop ebx\n" + "\tsub eax, ebx\n" + "\tpush eax\n";
+            case "TIMES":   return "\tpop eax\n" + "\tpop ebx\n" + "\timul eax, ebx\n" + "\tpush eax\n";
+            case "DIV":     return "\tpop eax\n" + "\tpop ebx\n" + "\tidiv eax, ebx\n" + "\tpush eax\n";
+            case "AND":     return "\tpop eax\n" + "\tpop ebx\n" + "\tand eax, ebx\n" + "\tpush eax\n";
+            case "OR":      return "\tpop eax\n" + "\tpop ebx\n" + "\tor eax, ebx\n" + "\tpush eax\n";
 
             case "LESS":        next_jumpc = "jl";    
             case "GREATER":     next_jumpc = "jg";
             case "EQUAL":       next_jumpc = "je";
                 return "\tpop ebx\n" + "\tcmp eax, ebx\n";
 
-            case "LINK":    return ""; // "\tpush ebp\n";
-            case "POPFBR":  return ""; // "\tmov ebp, esp\n";
+            case "LINK":    return "";
+            case "POPFBR":  return "";
             case "STOP":    return "";
+            case "JUMPIND": return "";
 
             default:
                 throw new ConverterException("Unexpected line part '" + p + "'" , current_line);
@@ -235,13 +243,12 @@ public class SaM_to_x86
         switch (p1)
         {
             case "ADDSP":       return get_add_space_code(p2);
-            case "PUSHIMM":     return "\tmov dword ebx, " + p2 + "\n" + "\tpush ebx\n";
+            case "PUSHIMM":     return "\tmov dword eax, " + p2 + "\n" + "\tpush eax\n";
             case "STOREOFF":    return "\tmov dword [ebp" + convert_to_ebp_offset(ip, p2) + "], eax\n";
-            case "PUSHOFF":     return "\tmov dword ebx, [ebp" + convert_to_ebp_offset(ip, p2) + "]\n" + "\tpush ebx\n";
-            case "JUMP":        return "\tjmp " + p2 + "\n";
-            case "JUMPC":       return "\t" + next_jumpc + " " + p2 + "\n";
-            case "JUMPIND":     return "\tpop ebp\n" + "\tret\n";
-            case "JSR":         return "\tcall " + p2 + "\n";
+            case "PUSHOFF":     return "\tmov dword eax, [ebp" + convert_to_ebp_offset(ip, p2) + "]\n" + "\tpush eax\n";
+            case "JUMP":        return "\tjmp _" + p2 + "\n";
+            case "JUMPC":       return "\t" + next_jumpc + " _" + p2 + "\n";
+            case "JSR":         return "\tcall _" + p2 + "\n";
 
             default:
                 throw new ConverterException("Unexpected line part '" + p1 + "'" , current_line);
