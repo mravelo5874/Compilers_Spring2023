@@ -9,8 +9,9 @@ public class SaM_to_x86
 {
     private static int current_line = -1;   // current line in sam code
     private static String next_jumpc = "";  // next jump compare to use
-    private static boolean ADD_DEBUG_PRINTS = false; // used to print to SASM console for debugging
+    private static boolean ADD_DEBUG_PRINTS = true; // used to print to SASM console for debugging
     private static String DEBUG_PRINT_EAX =     "\n" + "\tPRINT_STRING eax_v\n" + "\tPRINT_DEC 4, eax\n" + "\tNEWLINE\n\n"; // string used for printing eax value
+    private static String DEBUG_PRINT_EBX =     "\n" + "\tPRINT_STRING ebx_v\n" + "\tPRINT_DEC 4, ebx\n" + "\tNEWLINE\n\n"; // string used for printing eax value
     private static String DEBUG_PRINT_EPB =     "\n" + "\tPRINT_STRING ebp_v\n" + "\tPRINT_DEC 4, ebp\n" + "\tNEWLINE\n\n"; // string used for printing epb value
     private static String DEBUG_PRINT_ESP =     "\n" + "\tPRINT_STRING esp_v\n" + "\tPRINT_DEC 4, esp\n" + "\tNEWLINE\n\n"; // string used for printing esp value
     private static String DEBUG_PRINT_START =   "\n" + "\tPRINT_STRING m_start\n" + "\tNEWLINE\n\n"; // print starting new method
@@ -22,16 +23,24 @@ public class SaM_to_x86
         // start with required x86 program init
         String program_code = 
         "%include \"io.inc\"\n\n" +
-
         "section .data\n" +
-        "\tres db 'result: ', 0\n" +
-        "\teax_v db 'eax val: ', 0\n" +
-        "\tebp_v db 'ebp val: ', 0\n" +
-        "\tesp_v db 'esp val: ', 0\n" +
-        "\tm_start db 'start method', 0\n" +
-        "\tm_end db 'end method', 0\n" +
-        "\tstack db 'stack: ', 0\n" +
+        "\tres db 'result: ', 0\n";
 
+        // variables for printing ouy debug strings
+        if (ADD_DEBUG_PRINTS)
+        {
+            program_code +=
+            "\teax_v db 'eax val: ', 0\n" +
+            "\tebx_v db 'ebx val: ', 0\n" +
+            "\tebp_v db 'ebp val: ', 0\n" +
+            "\tesp_v db 'esp val: ', 0\n" +
+            "\tm_start db 'start method', 0\n" +
+            "\tm_end db 'end method', 0\n" +
+            "\tstack db 'stack: ', 0\n";
+        }
+       
+        // CMAIN program
+        program_code +=
         "section .text\n" +
         "\tglobal CMAIN\n" +
 
@@ -110,16 +119,12 @@ public class SaM_to_x86
         
         // print to console for debugging
         if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_START; }
-        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EPB; }
-        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_ESP; }
+        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EAX; }
+        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EBX; }
         if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_STACK; }
 
         x86_code += "\tpush ebp\n" + "\tmov ebp, esp\n\n";
 
-        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EPB; }
-        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_ESP; }
-        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_STACK; }
-        
         int count = 0;
         for (String l : line_list) 
         {
@@ -142,6 +147,7 @@ public class SaM_to_x86
 
                 // print to console for debugging
                 if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EAX; }
+                if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EBX; }
                 if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_STACK; }
             }
             else if (parts.length == 2)
@@ -151,6 +157,7 @@ public class SaM_to_x86
 
                 // print to console for debugging
                 if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EAX; }
+                if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EBX; }
                 if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_STACK; }
             }
             else
@@ -167,18 +174,12 @@ public class SaM_to_x86
         x86_code += lines[0].replace(":", "_end:\n").toLowerCase();
 
         // print to console for debugging
+        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EAX; }
+        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EBX; }
+        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_STACK; }
         if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_END; }
-        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EPB; }
-        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_ESP; }
-        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_STACK; }
-
-        x86_code += "\tpop eax\n" + "\tpop ebp\n";
         
-        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EPB; }
-        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_ESP; }
-        if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_STACK; }
-
-        x86_code += "\tret\n\n";
+        x86_code += "\tpop ebp\n" + "\tret\n\n";
 
         // return method code
         return x86_code;
@@ -204,18 +205,18 @@ public class SaM_to_x86
         // find out what sam command part is
         switch (p)
         {
-            case "NOT":     return "\tpop eax\n" + "\tnot eax\n" + "\tpush eax\n";
-            case "ADD":     return "\tpop eax\n" + "\tpop ebx\n" + "\tadd eax, ebx\n" + "\tpush eax\n";
-            case "SUB":     return "\tpop eax\n" + "\tpop ebx\n" + "\tsub eax, ebx\n" + "\tpush eax\n";
-            case "TIMES":   return "\tpop eax\n" + "\tpop ebx\n" + "\timul eax, ebx\n" + "\tpush eax\n";
-            case "DIV":     return "\tpop eax\n" + "\tpop ebx\n" + "\tidiv eax, ebx\n" + "\tpush eax\n";
-            case "AND":     return "\tpop eax\n" + "\tpop ebx\n" + "\tand eax, ebx\n" + "\tpush eax\n";
-            case "OR":      return "\tpop eax\n" + "\tpop ebx\n" + "\tor eax, ebx\n" + "\tpush eax\n";
+            case "NOT":     return "\tnot eax\n";
+            case "ADD":     return "\tpop ebx\n" + "\tadd eax, ebx\n";
+            case "SUB":     return "\tpop ebx\n" + "\tsub eax, ebx\n";
+            case "TIMES":   return "\tpop ebx\n" + "\timul eax, ebx\n";
+            case "DIV":     return "\tpop ebx\n" + "\tidiv eax, ebx\n";
+            case "AND":     return "\tpop ebx\n" + "\tand eax, ebx\n";
+            case "OR":      return "\tpop ebx\n" + "\tor eax, ebx\n";
 
             case "LESS":        next_jumpc = "jl";    
             case "GREATER":     next_jumpc = "jg";
             case "EQUAL":       next_jumpc = "je";
-                return "\tpop eax\n" + "\tpop ebx\n" + "\tcmp eax, ebx\n" + "\tpush eax\n";
+                return "\tpop ebx\n" + "\tcmp eax, ebx\n";
 
             case "LINK":    return ""; // "\tpush ebp\n";
             case "POPFBR":  return ""; // "\tmov ebp, esp\n";
@@ -234,9 +235,9 @@ public class SaM_to_x86
         switch (p1)
         {
             case "ADDSP":       return get_add_space_code(p2);
-            case "PUSHIMM":     return "\tmov dword eax, " + p2 + "\n" + "\tpush eax\n";
+            case "PUSHIMM":     return "\tmov dword ebx, " + p2 + "\n" + "\tpush ebx\n";
             case "STOREOFF":    return "\tmov dword [ebp" + convert_to_ebp_offset(ip, p2) + "], eax\n";
-            case "PUSHOFF":     return "\tmov dword eax, [ebp" + convert_to_ebp_offset(ip, p2) + "]\n" + "\tpush eax\n";
+            case "PUSHOFF":     return "\tmov dword ebx, [ebp" + convert_to_ebp_offset(ip, p2) + "]\n" + "\tpush ebx\n";
             case "JUMP":        return "\tjmp " + p2 + "\n";
             case "JUMPC":       return "\t" + next_jumpc + " " + p2 + "\n";
             case "JUMPIND":     return "\tpop ebp\n" + "\tret\n";
