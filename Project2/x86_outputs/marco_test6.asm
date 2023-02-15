@@ -1,4 +1,4 @@
-%include "io.inc" ; expected output: 7
+%include "io.inc" ; expected result: 65536
 
 section .data
 	res db 'result: ', 0
@@ -22,48 +22,61 @@ my_main:
 
 	push dword 0
 	push dword 0
-	push dword 0
-	push dword 3
+	push dword 2
 	pop dword eax
 	mov dword [ebp-4], eax
-	push dword 4
-	pop dword eax
-	mov dword [ebp-8], eax
 	push dword 0
 	push dword [ebp-4]
-	push dword [ebp-8]
-	call my_addthemnums
-	mov dword [ebp-16], eax
-	pop dword ecx
+	call my_recursive
+	mov dword [ebp-12], eax
 	pop dword ecx
 	pop dword eax
-	mov dword [ebp-12], eax
-	push dword [ebp-12]
+	mov dword [ebp-8], eax
+	push dword [ebp-8]
 	jmp my_main_end
 my_main_end:
 	pop dword eax
 	pop dword ecx
 	pop dword ecx
-	pop dword ecx
 	pop ebp
 	ret
 
-my_addthemnums:
+my_recursive:
 	push ebp
 	mov ebp, esp
 
 	push dword 0
-	push dword [ebp+8]
-	push dword [ebp+12]
-	pop dword eax
-	pop dword ebx
-	add eax, ebx
-	push dword eax
+	push dword 777
 	pop dword eax
 	mov dword [ebp-4], eax
+	push dword [ebp+8]
+	push dword 9999
+	pop dword ebx
+	pop dword eax
+	cmp eax, ebx
+	jl my_auto_label_30
+	push dword [ebp+8]
+	pop dword eax
+	mov dword [ebp-4], eax
+	jmp my_auto_label_31
+my_auto_label_30:
+	push dword 0
+	push dword [ebp+8]
+	push dword [ebp+8]
+	pop dword ebx
+	pop dword eax
+	imul eax, ebx
+	push dword eax
+	call my_recursive
+	mov dword [ebp-8], eax
+	pop dword ecx
+	pop dword eax
+	mov dword [ebp-4], eax
+my_auto_label_31:
+my_auto_break_15:
 	push dword [ebp-4]
-	jmp my_addthemnums_end
-my_addthemnums_end:
+	jmp my_recursive_end
+my_recursive_end:
 	pop dword eax
 	pop dword ecx
 	pop ebp

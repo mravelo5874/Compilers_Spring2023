@@ -3,36 +3,26 @@ LINK
 JSR main
 POPFBR
 STOP
-
-
-
-
 //method_separator
 main:
 ADDSP 0
-PUSHIMM 0 //rv
+PUSHIMM 0
 PUSHIMM 7
 LINK
 JSR simple
 POPFBR
 ADDSP -1
-
 JUMP main_END
 main_END:
 STOREOFF -1
 ADDSP -0
 JUMPIND
-
-
-
-
 //method_separator
 simple:
 ADDSP 0
 PUSHOFF -1
 PUSHIMM 1
 ADD
-
 JUMP simple_END
 simple_END:
 STOREOFF -2

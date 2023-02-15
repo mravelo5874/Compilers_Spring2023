@@ -1,4 +1,4 @@
-%include "io.inc" ; expected output: 7
+%include "io.inc" ; expected result: 7
 
 section .data
 	res db 'result: ', 0
@@ -55,8 +55,8 @@ my_addthemnums:
 	push dword 0
 	push dword [ebp+8]
 	push dword [ebp+12]
-	pop dword eax
 	pop dword ebx
+	pop dword eax
 	add eax, ebx
 	push dword eax
 	pop dword eax

@@ -10,7 +10,7 @@ import java.util.List;
 public class Tester 
 {
     private static List<Integer> test_case_exp = Arrays.asList(
-        0, 0, 0, 15, 90, 30, 123, 431, 120, 1597, 0, 0, 0, 15, 5, 71, 21, 7, 1066, 78, 0, 1, 65536, 0, 1, 0, 34, 1601, 479001600, 138);
+        0, 0, 0, 15, 90, 30, 123, 431, 120, 1597, 0, 0, 0, 15, 5, 71, 21, 7, 1066, 78, 0, 1, 65536, 0, 1, 0, 34, 1601, 479001600, 138, 8);
     private static List<String> test_cases = Arrays.asList(
         "testcases/test1.bali", 
         "testcases/test2.bali",
@@ -41,22 +41,24 @@ public class Tester
         "testcases/marco_test10.bali",
         "testcases/marco_test11.bali",
         "testcases/marco_test12.bali",
-        "testcases/marco_test13.bali"
+        "testcases/marco_test13.bali",
+        "testcases/marco_test14.bali"
         );
 
     public static void test_and_report()
-    {
-        // TODO X86 code testing
-        System.out.println("Testing X86 code not implemented yet...");
-            
+    {            
         int total_testcases = test_cases.size();
         int successful = 0;
         // iterate through each test case and attempt to run compile()
         for (int i = 0; i < total_testcases; i++)
         {
+            // get test file
+            String test_bali_file = test_cases.get(i);
+
             // compile test case
-            String output_file = test_cases.get(i).replace("testcases/", "testcases_SaM/").replace(".bali", "") + ".sam";
-            BaliX86Compiler.compile(test_cases.get(i), output_file);
+            String x86_output_file =  test_bali_file.replace("testcases/", "x86_outputs/").replace(".bali", ".asm");
+            if (BaliX86Compiler.compile(test_bali_file, x86_output_file, false, test_case_exp.get(i).toString()))
+                System.out.println("Converted testcase " + i + " [" + test_bali_file.replace("testcases/", "").replace(".bali", ".sam") + "]...");
 
             // run sam code
             /* 
@@ -76,7 +78,7 @@ public class Tester
             }
             */
         }
-        System.out.println("Successfully completed " + successful + "/" + total_testcases + " testcases.");
+        // System.out.println("Successfully completed " + successful + "/" + total_testcases + " testcases.");
         
     }
 

@@ -45,7 +45,7 @@ public class BaliX86Compiler
         {
             input_file = args[0];
             output_file = args[1];
-            compile(input_file, output_file);
+            compile(input_file, output_file, true, "not provided");
         }
         else
         {
@@ -53,34 +53,38 @@ public class BaliX86Compiler
             System.out.print("Program requires two commnad-line arguments: [input file (*.bali)] [output file (*.asm)]\n");
             
             // TODO remove this before submitting
-            input_file = "testcases/marco_test1.bali";
-            output_file = "output.asm";
-            compile(input_file, output_file);
+
+            Tester.test_and_report();
+            // input_file = "testcases/marco_test1.bali";
+            // output_file = "output.asm";
+            // compile(input_file, output_file);
         }
     }
 
-    static Boolean compile(String file_name, String output_file)
+    static Boolean compile(String file_name, String output_file, Boolean print_stuff, String expected_result)
     {
-        System.out.println("input_file: " + file_name);
+        if (print_stuff) System.out.println("input_file: " + file_name);
         try 
         {
             // convert bali to sam code
-            System.out.println("Starting bali to sam compiler...");
+            if (print_stuff) System.out.println("Starting bali to sam compiler...");
             SamTokenizer f = new SamTokenizer(file_name);
             String sam_program = getPROGRAM(f);
-            System.out.println("Compiler completed with no problems.");
+            if (print_stuff) System.out.println("Compiler completed with no problems.");
 
-            System.out.println("sam_program: " + sam_program);
+            // save sam program to file
+            String sam_output_file = file_name.replace("testcases/", "SaM_outputs/") .replace(".bali", ".sam");
+            write_to_file(sam_output_file, sam_program);
 
             // convert sam code to x86
-            System.out.println("Starting sam to x86 converter...");
-            String x86_program = SaM_to_x86.convert_code(sam_program);
-            System.out.println("Converter completed with no problems.");
+            if (print_stuff) System.out.println("Starting sam to x86 converter...");
+            String x86_program = SaM_to_x86.convert_code(sam_program, expected_result);
+            if (print_stuff) System.out.println("Converter completed with no problems.");
             
             // output to file
-            System.out.println("Writing to output file...");
+            if (print_stuff) System.out.println("Writing to output file...");
             write_to_file(output_file, x86_program);
-            System.out.println("Program written to: '" + output_file + "'.");
+            if (print_stuff) System.out.println("Program written to: '" + output_file + "'.");
             return true; // return true if program compiled correctly
         } 
         catch (TokenizerException te)
@@ -570,7 +574,7 @@ public class BaliX86Compiler
 
                         // SAM CODE FOR METHOD
                         return_str = 
-                        "PUSHIMM 0 //rv\n" // comment indicator for x86
+                        "PUSHIMM 0\n" // comment indicator for x86  '//rv'
                         + exps_str
                         + "LINK\n"
                         + "JSR " + word_str + "\n"

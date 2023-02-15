@@ -18,11 +18,13 @@ public class SaM_to_x86
     private static String DEBUG_PRINT_END =     "\n" + "\tPRINT_STRING m_end\n" + "\tNEWLINE\n\n"; // print ending method
     private static String DEBUG_PRINT_STACK =   "\n" + "\tPRINT_STRING stack\n" + "\tpop ebx\n" + "\tPRINT_DEC 4, ebx\n" + "\tpush ebx\n" + "\tNEWLINE\n\n"; // print top of stack
 
-    public static String convert_code(String sam_code)
+    public static String convert_code(String sam_code, String expected_result)
     {
+
+
         // start with required x86 program init
         String program_code = 
-        "%include \"io.inc\"\n\n" +
+        "%include \"io.inc\" ; expected result: " + expected_result + "\n\n" +
         "section .data\n" +
         "\tres db 'result: ', 0\n";
 
@@ -105,13 +107,10 @@ public class SaM_to_x86
         // split into sam code lines
         String[] lines = s.split("\n");
         List<String> line_list = new ArrayList<String>();
+        
         for (String l : lines)
         {
-            // remove any "PUSHIMM 0" used as return values for method uses
-            if (!l.contains("//rv"))
-            {
-                line_list.add(l);
-            }
+            line_list.add(l);
         }
 
         // set method name as first line
@@ -171,10 +170,13 @@ public class SaM_to_x86
         if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_EAX; }
         if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_END; }
 
-        // add pop into eax only if not in main method
-        if (!lines[0].toLowerCase().equals("main:"))
+        // add pop into eax
+        x86_code += "\tpop dword eax\n";
+
+        // remove space for local variables
+        if (ip.get_int_2() > 0)
         {
-            x86_code += "\tpop eax\n";
+            x86_code += get_add_space_code(ip.get_int_2() * -1);
         }
         
         x86_code += "\tpop ebp\n" + "\tret\n\n";
@@ -204,19 +206,18 @@ public class SaM_to_x86
         // find out what sam command part is
         switch (p)
         {
-            case "NOT":     return "\tpop eax\n" + "\tnot eax\n" + "\tpush eax\n";
+            case "NOT":     return "\tpop dword eax\n" + "\tnot eax\n" + "\tpush dword eax\n";
 
-            case "ADD":     return "\tpop eax\n" + "\tpop ebx\n" + "\tadd eax, ebx\n" + "\tpush eax\n";
-            case "SUB":     return "\tpop eax\n" + "\tpop ebx\n" + "\tsub eax, ebx\n" + "\tpush eax\n";
-            case "TIMES":   return "\tpop eax\n" + "\tpop ebx\n" + "\timul eax, ebx\n" + "\tpush eax\n";
-            case "DIV":     return "\tpop eax\n" + "\tpop ebx\n" + "\tidiv eax, ebx\n" + "\tpush eax\n";
-            case "AND":     return "\tpop eax\n" + "\tpop ebx\n" + "\tand eax, ebx\n" + "\tpush eax\n";
-            case "OR":      return "\tpop eax\n" + "\tpop ebx\n" + "\tor eax, ebx\n" + "\tpush eax\n";
+            case "ADD":     return "\tpop dword ebx\n" + "\tpop dword eax\n" + "\tadd eax, ebx\n" + "\tpush dword eax\n";
+            case "SUB":     return "\tpop dword ebx\n" + "\tpop dword eax\n" + "\tsub eax, ebx\n" + "\tpush dword eax\n";
+            case "TIMES":   return "\tpop dword ebx\n" + "\tpop dword eax\n" + "\timul eax, ebx\n" + "\tpush dword eax\n";
+            case "DIV":     return set_up_idiv();
+            case "AND":     return "\tpop dword ebx\n" + "\tpop dword eax\n" + "\tand eax, ebx\n" + "\tpush dword eax\n";
+            case "OR":      return "\tpop dword ebx\n" + "\tpop dword eax\n" + "\tor eax, ebx\n" + "\tpush dword eax\n";
 
-            case "LESS":        next_jumpc = "jl";    
-            case "GREATER":     next_jumpc = "jg";
-            case "EQUAL":       next_jumpc = "je";
-                return "\tpop eax\n" + "\tpop ebx\n" + "\tcmp eax, ebx\n";
+            case "LESS":    next_jumpc = "jl"; return "\tpop dword ebx\n" + "\tpop dword eax\n" + "\tcmp eax, ebx\n";
+            case "GREATER": next_jumpc = "jg"; return "\tpop dword ebx\n" + "\tpop dword eax\n" + "\tcmp eax, ebx\n";
+            case "EQUAL":   next_jumpc = "je"; return "\tpop dword ebx\n" + "\tpop dword eax\n" + "\tcmp eax, ebx\n";
 
             case "LINK":    return "";
             case "POPFBR":  return "";
@@ -224,6 +225,9 @@ public class SaM_to_x86
             case "JUMPIND": return "";
 
             default:
+                // check if part is label
+                if (p.endsWith(":")) return "my_" + p + "\n";
+                // else throw converter exception
                 throw new ConverterException("Unexpected line part '" + p + "'" , current_line);
         }
     }
@@ -236,12 +240,12 @@ public class SaM_to_x86
         switch (p1)
         {
             case "ADDSP":       return get_add_space_code(p2);
-            case "PUSHIMM":     return "\tmov dword eax, " + p2 + "\n" + "\tpush eax\n";
-            case "STOREOFF":    return "\tpop eax\n" + "\tmov dword [ebp" + convert_to_ebp_offset(ip, p2) + "], eax\n";
-            case "PUSHOFF":     return "\tmov dword eax, [ebp" + convert_to_ebp_offset(ip, p2) + "]\n" + "\tpush eax\n";
+            case "PUSHIMM":     return "\tpush dword " + p2 + "\n";
+            case "STOREOFF":    return "\tpop dword eax\n" + "\tmov dword [ebp" + convert_to_ebp_offset(ip, p2) + "], eax\n";
+            case "PUSHOFF":     return "\tpush dword [ebp" + convert_to_ebp_offset(ip, p2) + "]\n";
             case "JUMP":        return "\tjmp my_" + p2 + "\n";
             case "JUMPC":       return "\t" + next_jumpc + " my_" + p2 + "\n";
-            case "JSR":         return "\tcall my_" + p2 + "\n";
+            case "JSR":         return "\tcall my_" + p2 + "\n" + "\tmov dword [ebp" + convert_to_ebp_offset(ip.get_int_2() + 1) + "], eax\n";
 
             default:
                 throw new ConverterException("Unexpected line part '" + p1 + "'" , current_line);
@@ -251,6 +255,11 @@ public class SaM_to_x86
     private static String get_add_space_code(String num)
     {
         int i = Integer.parseInt(num);
+        return get_add_space_code(i);
+    }
+
+    private static String get_add_space_code(int i)
+    {
         String add_space_code = "";
         
         // add space for local variables
@@ -258,14 +267,14 @@ public class SaM_to_x86
         {
             for (int x = 1; x <= i; x++)
             {
-                //add_space_code += "\tmov dword eax, 0\n" + "\tpush eax\n";
+                add_space_code += "\tpush dword 0\n";
             }
         }
         else if (i < 0)
         {
             for (int x = 0; x > i; x--)
             {
-                add_space_code += "\tpop ecx\n";
+                add_space_code += "\tpop dword ecx\n";
             }
         }
         return add_space_code;
@@ -311,5 +320,31 @@ public class SaM_to_x86
         if (ebp_offset > 0)
                 s = "+" + s;
             return s;
+    }
+
+    static int div_label_counter = 0;
+
+    private static String set_up_idiv()
+    {
+        // get next div label
+        String div_label = String.valueOf(div_label_counter);
+        div_label_counter++;
+
+        String idiv_string = 
+        "\tmov dword eax, [esp+4]\n" +
+        "\tcmp eax, 0\n" +
+        "\tjl idiv_neg_label_" + div_label + "\n" +
+        "\tmov dword edx, 0\n" +
+        "\tjmp idiv_op_" + div_label + "\n" +
+        "idiv_neg_label_" + div_label + ":\n" +
+        "\tmov dword edx, -1\n" +
+        "\tjmp idiv_op_" + div_label + "\n" +
+        "idiv_op_" + div_label + ":\n" +
+        "\tpop dword ebx\n" + 
+        "\tpop dword eax\n" + 
+        "\tidiv dword ebx\n" + 
+        "\tpush dword eax\n";
+
+        return idiv_string;
     }
 }
