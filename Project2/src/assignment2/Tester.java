@@ -46,7 +46,11 @@ public class Tester
         );
 
     public static void test_and_report()
-    {            
+    {   
+        System.out.println("Testing not implemented for this assignment...");
+        return;
+
+        /* 
         int total_testcases = test_cases.size();
         int successful = 0;
         // iterate through each test case and attempt to run compile()
@@ -57,11 +61,11 @@ public class Tester
 
             // compile test case
             String x86_output_file =  test_bali_file.replace("testcases/", "x86_outputs/").replace(".bali", ".asm");
-            if (BaliX86Compiler.compile(test_bali_file, x86_output_file, false, test_case_exp.get(i).toString()))
+            if (MyBaliX86Compiler.compile(test_bali_file, x86_output_file, false, test_case_exp.get(i).toString()))
                 System.out.println("Converted testcase " + i + " [" + test_bali_file.replace("testcases/", "").replace(".bali", ".sam") + "]...");
 
             // run sam code
-            /* 
+            
             int result = run_sam_code();
             System.out.println("program result: " + result);
             System.out.println("expected result: " + test_case_exp.get(i));
@@ -76,10 +80,10 @@ public class Tester
             {
                 System.out.println("[Test case " + (i+1) + " failed. Returned unexpected result: " + result + "]\n");
             }
-            */
+            
         }
+        */
         // System.out.println("Successfully completed " + successful + "/" + total_testcases + " testcases.");
-        
     }
 
     // method to run sam code for running test cases

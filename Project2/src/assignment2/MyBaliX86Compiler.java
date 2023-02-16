@@ -1,6 +1,6 @@
 package assignment2;
 
-import assignment2.SaM_to_x86;
+//import assignment2.SaM_to_x86;
 import assignment2.helper_classes.*;
 
 import edu.cornell.cs.sam.io.SamTokenizer;
@@ -15,7 +15,7 @@ import java.util.Arrays;
 import java.util.List;
 
 
-public class BaliX86Compiler 
+public class MyBaliX86Compiler 
 {
     static boolean PRINT_COMPLILE = false;
 
@@ -51,13 +51,6 @@ public class BaliX86Compiler
         {
             // print out program requirements
             System.out.print("Program requires two commnad-line arguments: [input file (*.bali)] [output file (*.asm)]\n");
-            
-            // TODO remove this before submitting
-
-            Tester.test_and_report();
-            // input_file = "testcases/marco_test1.bali";
-            // output_file = "output.asm";
-            // compile(input_file, output_file);
         }
     }
 
@@ -73,8 +66,8 @@ public class BaliX86Compiler
             if (print_stuff) System.out.println("Compiler completed with no problems.");
 
             // save sam program to file
-            String sam_output_file = file_name.replace("testcases/", "SaM_outputs/") .replace(".bali", ".sam");
-            write_to_file(sam_output_file, sam_program);
+            //String sam_output_file = file_name.replace("testcases/", "SaM_outputs/") .replace(".bali", ".sam");
+            //write_to_file(sam_output_file, sam_program);
 
             // convert sam code to x86
             if (print_stuff) System.out.println("Starting sam to x86 converter...");
