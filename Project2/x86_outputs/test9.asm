@@ -35,6 +35,9 @@ my_fact:
 	push ebp
 	mov ebp, esp
 
+        ;PRINT_DEC 4,[ebp+8]
+        ;NEWLINE
+
 	push dword 0
 	push dword [ebp+8]
 	push dword 0
@@ -42,20 +45,22 @@ my_fact:
 	pop dword eax
 	cmp eax, ebx
 	je my_auto_label_14
-	push dword [ebp+8]
-	push dword 0
-	push dword [ebp+8]
+	push dword [ebp+8] ; this is a
+	push dword 0       ; this is rv for fact
+	push dword [ebp+8] 
 	push dword 1
 	pop dword ebx
 	pop dword eax
 	sub eax, ebx
-	push dword eax
+	push dword eax     ; this is (a - 1)
+
+        PRINT_DEC 4, eax
+        
 	call my_fact
+        
+        PRINT_DEC 4, [esp]
+
 	mov dword [ebp-8], eax
-        
-        PRINT_DEC 4, [ebp-8]
-        NEWLINE
-        
 	pop dword ecx
 	pop dword ebx
 	pop dword eax

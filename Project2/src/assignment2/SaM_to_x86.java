@@ -206,14 +206,14 @@ public class SaM_to_x86
         // find out what sam command part is
         switch (p)
         {
-            case "NOT":     return "\tpop dword eax\n" + "\tnot eax\n" + "\tpush dword eax\n";
+            case "NOT":     return set_up_not();
+            case "AND":     return set_up_and();
+            case "OR":      return set_up_or();
 
             case "ADD":     return "\tpop dword ebx\n" + "\tpop dword eax\n" + "\tadd eax, ebx\n" + "\tpush dword eax\n";
             case "SUB":     return "\tpop dword ebx\n" + "\tpop dword eax\n" + "\tsub eax, ebx\n" + "\tpush dword eax\n";
             case "TIMES":   return "\tpop dword ebx\n" + "\tpop dword eax\n" + "\timul eax, ebx\n" + "\tpush dword eax\n";
             case "DIV":     return set_up_idiv();
-            case "AND":     return "\tpop dword ebx\n" + "\tpop dword eax\n" + "\tand eax, ebx\n" + "\tpush dword eax\n";
-            case "OR":      return "\tpop dword ebx\n" + "\tpop dword eax\n" + "\tor eax, ebx\n" + "\tpush dword eax\n";
 
             case "LESS":    next_jumpc = "jl"; return "\tpop dword ebx\n" + "\tpop dword eax\n" + "\tcmp eax, ebx\n";
             case "GREATER": next_jumpc = "jg"; return "\tpop dword ebx\n" + "\tpop dword eax\n" + "\tcmp eax, ebx\n";
@@ -323,7 +323,6 @@ public class SaM_to_x86
     }
 
     static int div_label_counter = 0;
-
     private static String set_up_idiv()
     {
         // get next div label
@@ -346,5 +345,105 @@ public class SaM_to_x86
         "\tpush dword eax\n";
 
         return idiv_string;
+    }
+
+    static int not_label_counter = 0;
+    private static String set_up_not()
+    {
+        // get next and label
+        String not_label = String.valueOf(not_label_counter);
+        not_label_counter++;
+
+        String not_string =
+        "\tpop dword eax\n" +
+        "\tcmp eax, 0\n" + 
+        "\tje not_label_a" + not_label + "\n" +
+        "\tpush dword 0\n" +
+        "\tjmp not_label_b" + not_label + "\n" +
+        "not_label_a" + not_label + ":\n" +
+        "\tpush dword 1\n" +
+        "\tjmp not_label_b" + not_label + "\n" +
+        "not_label_b" + not_label + ":\n";
+
+        return not_string;
+    }
+
+    static int and_label_counter = 0;
+    private static String set_up_and()
+    {
+        // get next and label
+        String and_label = String.valueOf(and_label_counter);
+        and_label_counter++;
+
+        String and_string = 
+        // convert ebx to 1 or 0
+        "\tpop dword ebx\n" + 
+        "\tcmp ebx, 0\n" +
+        "\tjne and_label_a" + and_label + "\n" +
+        "\tjmp and_label_b" + and_label + "\n" +
+        "and_label_a" + and_label + ":\n" +
+        "\tmov dword ebx, 1\n" +
+        "\tjmp and_label_b" + and_label + "\n" +
+        "and_label_b" + and_label + ":\n" +
+        // convert eax to 1 or 0
+        "\tpop dword eax\n" +
+        "\tcmp eax, 0\n" +
+        "\tjne and_label_c" + and_label + "\n" +
+        "\tjmp and_label_d" + and_label + "\n" +
+        "and_label_c" + and_label + ":\n" +
+        "\tmov dword eax, 1\n" +
+        "\tjmp and_label_d" + and_label + "\n" +
+        "and_label_d" + and_label + ":\n" +
+        // compute AND logic
+        "\tcmp eax, ebx\n" +
+        "\tje and_label_e" + and_label + "\n" +
+        "\tpush dword 0\n" +
+        "\tjmp and_label_f" + and_label + "\n" +
+        "and_label_e" + and_label + ":\n" +
+        "\tpush dword 1\n" +
+        "\tjmp and_label_f" + and_label + "\n" +
+        "and_label_f" + and_label + ":\n";
+
+        return and_string;
+    }
+
+    static int or_label_counter = 0;
+    private static String set_up_or()
+    {
+        // get next or label
+        String or_label = String.valueOf(or_label_counter);
+        and_label_counter++;
+
+        String or_string = 
+        // convert ebx to 1 or 0
+        "\tpop dword ebx\n" + 
+        "\tcmp ebx, 0\n" +
+        "\tjne or_label_a" + or_label + "\n" +
+        "\tjmp or_label_b" + or_label + "\n" +
+        "or_label_a" + or_label + ":\n" +
+        "\tmov dword ebx, 1\n" +
+        "\tjmp or_label_b" + or_label + "\n" +
+        "or_label_b" + or_label + ":\n" +
+        // convert eax to 1 or 0
+        "\tpop dword eax\n" +
+        "\tcmp eax, 0\n" +
+        "\tjne or_label_c" + or_label + "\n" +
+        "\tjmp or_label_d" + or_label + "\n" +
+        "or_label_c" + or_label + ":\n" +
+        "\tmov dword eax, 1\n" +
+        "\tjmp or_label_d" + or_label + "\n" +
+        "or_label_d" + or_label + ":\n" +
+        // compute OR logic
+        "\tadd eax, ebx\n" +
+        "\tcmp eax, 0\n" +
+        "\tjg or_label_e" + or_label + "\n" +
+        "\tpush dword 0\n" +
+        "\tjmp or_label_f" + or_label + "\n" +
+        "or_label_e" + or_label + ":\n" +
+        "\tpush dword 1\n" +
+        "\tjmp or_label_f" + or_label + "\n" +
+        "or_label_f" + or_label + ":\n";
+
+        return or_string;
     }
 }

@@ -82,8 +82,14 @@ my_auto_label_38:
 	pop dword eax
 	cmp eax, ebx
 	pop dword eax
-	not eax
-	push dword eax
+	cmp eax, 0
+	je not_label_a1
+	push dword 0
+	jmp not_label_b1
+not_label_a1:
+	push dword 1
+	jmp not_label_b1
+not_label_b1:
 	je my_auto_label_39
 my_auto_break_19:
 	push dword [ebp+8]

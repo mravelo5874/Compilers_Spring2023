@@ -26,8 +26,14 @@ my_main:
 	mov dword [ebp-4], eax
 	push dword [ebp-4]
 	pop dword eax
-	not eax
-	push dword eax
+	cmp eax, 0
+	je not_label_a0
+	push dword 0
+	jmp not_label_b0
+not_label_a0:
+	push dword 1
+	jmp not_label_b0
+not_label_b0:
 	pop dword eax
 	mov dword [ebp-4], eax
 	push dword [ebp-4]
