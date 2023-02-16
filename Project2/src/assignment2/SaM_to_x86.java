@@ -5,23 +5,64 @@ import assignment2.helper_classes.*;
 import java.util.ArrayList;
 import java.util.List;
 
+// class to keep track of method data
+final class METHOD_DATA
+{
+    private String method_name;
+    private int params;
+    private int locals;
+
+    public METHOD_DATA(String _method_name, int _params, int _locals)
+    {
+        this.method_name = _method_name;
+        this.params = _params;
+        this.locals = _locals;
+    }
+
+    public String get_name() { return this.method_name; }
+    public int get_params() { return this.params; }
+    public int get_locals() { return this.locals; }
+}
+
 public class SaM_to_x86 
 {
+    // list of method data objects to store data for each method
+    private static List<METHOD_DATA> method_data;
+
+    private static int get_method_params(String method)
+    {
+        for (METHOD_DATA m : method_data)
+        {
+            if (m.get_name().equals(method))
+                return m.get_params();
+        }
+        throw new ConverterException("Could not find method '" + method + "' in method_data.", current_line);
+    }
+
+    private static int get_method_locals(String method)
+    {
+        for (METHOD_DATA m : method_data)
+        {
+            if (m.get_name().equals(method))
+                return m.get_locals();
+        }
+        throw new ConverterException("Could not find method '" + method + "' in method_data.", current_line);
+    }
+
     private static int current_line = -1;           // current line in sam code
     private static String next_jumpc = "";          // next jump compare to use
     private static boolean ADD_DEBUG_PRINTS = false; // used to print to SASM console for debugging
     private static String DEBUG_PRINT_EAX =     "\n" + "\tPRINT_STRING eax_v\n" + "\tPRINT_DEC 4, eax\n" + "\tNEWLINE\n\n"; // string used for printing eax value
-    private static String DEBUG_PRINT_EBX =     "\n" + "\tPRINT_STRING ebx_v\n" + "\tPRINT_DEC 4, ebx\n" + "\tNEWLINE\n\n"; // string used for printing eax value
-    private static String DEBUG_PRINT_EPB =     "\n" + "\tPRINT_STRING ebp_v\n" + "\tPRINT_DEC 4, ebp\n" + "\tNEWLINE\n\n"; // string used for printing epb value
-    private static String DEBUG_PRINT_ESP =     "\n" + "\tPRINT_STRING esp_v\n" + "\tPRINT_DEC 4, esp\n" + "\tNEWLINE\n\n"; // string used for printing esp value
     private static String DEBUG_PRINT_START =   "\n" + "\tPRINT_STRING m_start\n" + "\tNEWLINE\n\n"; // print starting new method
     private static String DEBUG_PRINT_END =     "\n" + "\tPRINT_STRING m_end\n" + "\tNEWLINE\n\n"; // print ending method
-    private static String DEBUG_PRINT_STACK =   "\n" + "\tPRINT_STRING stack\n" + "\tpop ebx\n" + "\tPRINT_DEC 4, ebx\n" + "\tpush ebx\n" + "\tNEWLINE\n\n"; // print top of stack
+    // DEPRICATED LOL
+    //private static String DEBUG_PRINT_EBX =     "\n" + "\tPRINT_STRING ebx_v\n" + "\tPRINT_DEC 4, ebx\n" + "\tNEWLINE\n\n"; // string used for printing eax value
+    //private static String DEBUG_PRINT_EPB =     "\n" + "\tPRINT_STRING ebp_v\n" + "\tPRINT_DEC 4, ebp\n" + "\tNEWLINE\n\n"; // string used for printing epb value
+    //private static String DEBUG_PRINT_ESP =     "\n" + "\tPRINT_STRING esp_v\n" + "\tPRINT_DEC 4, esp\n" + "\tNEWLINE\n\n"; // string used for printing esp value
+    //private static String DEBUG_PRINT_STACK =   "\n" + "\tPRINT_STRING stack\n" + "\tpop ebx\n" + "\tPRINT_DEC 4, ebx\n" + "\tpush ebx\n" + "\tNEWLINE\n\n"; // print top of stack
 
     public static String convert_code(String sam_code, String expected_result)
     {
-
-
         // start with required x86 program init
         String program_code = 
         "%include \"io.inc\" ; expected result: " + expected_result + "\n\n" +
@@ -68,17 +109,40 @@ public class SaM_to_x86
         // split code into individual methods and respective ends
         List<STR_PAIR> sam_method_end_pairs = split_sam_by_method(sam_code);
 
-        // convert each method and method end and append to program string
-        for (STR_PAIR p : sam_method_end_pairs) 
+        // create list of METHOD_DATA to store data about each method
+        method_data = new ArrayList<METHOD_DATA>();
+
+        // first pass through ends to gather method data
+        for (STR_PAIR p : sam_method_end_pairs)
         {
-            // convert method end first,
-            // returns an INT_PAIR with (parameters count, locals count)
-            INT_PAIR method_vars = convert_method_end(p.get_str_2());
-            program_code += convert_method(method_vars, p.get_str_1());
+            String method_name = p.get_str_1().split("\n")[0].toLowerCase().replace(":", "");
+            // System.out.println("method name: " + method_name);
+            method_data.add(convert_method_end(p.get_str_2(), method_name));
         }
+            
+            
+        // second pass through methods to convert sam code
+        for (STR_PAIR p : sam_method_end_pairs)
+            program_code += convert_method(p.get_str_1());
 
         // return complete x86 program
         return program_code;
+    }
+
+    private static METHOD_DATA convert_method_end(String s, String method_name)
+    {
+        String[] lines = s.split("\n");
+        
+        // lines[0] = storeoff return value offset,
+        // we can use this to get the number of parameters in the method!
+        int params = Math.abs(Integer.parseInt(lines[0].split(" ")[1].replace("\n", ""))) - 1;
+
+        // lines[1] = addspace command to remove space for locals
+        // we can use this to get the number of locals in the method!
+        int locals = Math.abs(Integer.parseInt(lines[1].split(" ")[1].replace("\n", "")));
+
+        //System.out.println("params: " + params + ", locals: " + locals);
+        return new METHOD_DATA(method_name, params, locals);
     }
 
     private static List<STR_PAIR> split_sam_by_method(String sam_code)
@@ -102,7 +166,7 @@ public class SaM_to_x86
         return method_end_pairs;
     }
 
-    private static String convert_method(INT_PAIR ip, String s)
+    private static String convert_method(String s)
     {
         // split into sam code lines
         String[] lines = s.split("\n");
@@ -114,7 +178,8 @@ public class SaM_to_x86
         }
 
         // set method name as first line
-        String x86_code = "my_" + lines[0].toLowerCase() + "\n";
+        String method_name = lines[0].toLowerCase().replace(":", "");
+        String x86_code = "my_" + method_name + ":\n";
         
         // print to console for debugging
         if (ADD_DEBUG_PRINTS) { x86_code += DEBUG_PRINT_START; }
@@ -147,7 +212,7 @@ public class SaM_to_x86
             }
             else if (parts.length == 2)
             {
-                String p2 = convert_2_part(ip, parts[0], parts[1]);
+                String p2 = convert_2_part(parts[0], parts[1], method_name);
                 x86_code += p2;
 
                 // print to console for debugging
@@ -174,31 +239,15 @@ public class SaM_to_x86
         x86_code += "\tpop dword eax\n";
 
         // remove space for local variables
-        if (ip.get_int_2() > 0)
+        if (get_method_locals(method_name) > 0)
         {
-            x86_code += get_add_space_code(ip.get_int_2() * -1);
+            x86_code += get_add_space_code(get_method_locals(method_name) * -1);
         }
         
         x86_code += "\tpop ebp\n" + "\tret\n\n";
 
         // return method code
         return x86_code;
-    }
-
-    private static INT_PAIR convert_method_end(String s)
-    {
-        String[] lines = s.split("\n");
-        
-        // lines[0] = storeoff return value offset,
-        // we can use this to get the number of parameters in the method!
-        int params = Math.abs(Integer.parseInt(lines[0].split(" ")[1].replace("\n", ""))) - 1;
-
-        // lines[1] = addspace command to remove space for locals
-        // we can use this to get the number of locals in the method!
-        int locals = Math.abs(Integer.parseInt(lines[1].split(" ")[1].replace("\n", "")));
-
-        //System.out.println("params: " + params + ", locals: " + locals);
-        return new INT_PAIR(params, locals);
     }
 
     private static String convert_1_part(String p)
@@ -232,7 +281,7 @@ public class SaM_to_x86
         }
     }
 
-    private static String convert_2_part(INT_PAIR ip, String p1, String p2)
+    private static String convert_2_part(String p1, String p2, String method_name)
     {
         p2 = p2.toLowerCase();
 
@@ -241,16 +290,33 @@ public class SaM_to_x86
         {
             case "ADDSP":       return get_add_space_code(p2);
             case "PUSHIMM":     return "\tpush dword " + p2 + "\n";
-            case "STOREOFF":    return "\tpop dword eax\n" + "\tmov dword [ebp" + convert_to_ebp_offset(ip, p2) + "], eax\n";
-            case "PUSHOFF":     return "\tpush dword [ebp" + convert_to_ebp_offset(ip, p2) + "]\n";
+            case "STOREOFF":    return "\tpop dword eax\n" + "\tmov dword [ebp" + convert_to_ebp_offset(p2, method_name) + "], eax\n";
+            case "PUSHOFF":     return "\tpush dword [ebp" + convert_to_ebp_offset(p2, method_name) + "]\n";
             case "JUMP":        return "\tjmp my_" + p2 + "\n";
             case "JUMPC":       return "\t" + next_jumpc + " my_" + p2 + "\n";
-            case "JSR":         return "\tcall my_" + p2 + "\n" + "\tmov dword [ebp" + convert_to_ebp_offset(ip.get_int_2() + 1) + "], eax\n";
+            case "JSR":         return "\tcall my_" + p2 + "\n" + "\tmov dword [esp" + get_rv_esp_offset(get_method_params(p2)) + "], eax\n"; // "\tmov dword [esp" + convert_to_ebp_offset(ip.get_int_2() + 1) + "]
 
             default:
                 throw new ConverterException("Unexpected line part '" + p1 + "'" , current_line);
         }
     }
+
+    /* DEPRICATED LOL
+    private static String convert_to_ebp_offset(int num)
+    {
+        // if no INT_PAIR is provided, return local ebp offset
+        if (num > 0)
+        {
+            int ebp_offset =  (num) * -4;
+            String s = String.valueOf(ebp_offset);
+            if (ebp_offset > 0)
+                s = "+" + s;
+            return s;
+        }
+        // throw error?
+        throw new ConverterException("Error attempting to convert '" + num + "' to ebp offset value." , current_line);
+    }
+    */
 
     private static String get_add_space_code(String num)
     {
@@ -280,22 +346,22 @@ public class SaM_to_x86
         return add_space_code;
     }
 
-    private static String convert_to_ebp_offset(int num)
+    private static String get_rv_esp_offset(int params)
     {
-        // if no INT_PAIR is provided, return local ebp offset
-        if (num > 0)
+        // want to get stack pointer of return value
+        int rv_offset = 0 + params;
+        rv_offset *= 4;
+        // convert to string
+        String rv_offset_string = String.valueOf(rv_offset);
+        // add '+' if greater than -1
+        if (rv_offset > -1)
         {
-            int ebp_offset =  (num) * -4;
-            String s = String.valueOf(ebp_offset);
-            if (ebp_offset > 0)
-                s = "+" + s;
-            return s;
+            rv_offset_string = "+" + rv_offset_string;
         }
-        // throw error?
-        throw new ConverterException("Error attempting to convert '" + num + "' to ebp offset value." , current_line);
+        return rv_offset_string;
     }
 
-    private static String convert_to_ebp_offset(INT_PAIR ip, String num)
+    private static String convert_to_ebp_offset(String num, String method_name)
     {
         int i = Integer.parseInt(num);
         int ebp_offset = 0;
@@ -308,7 +374,7 @@ public class SaM_to_x86
         // if int is negative, it is a parameter
         else if (i < 0)
         {
-            ebp_offset =  (i + ip.get_int_1() + 2) * 4;
+            ebp_offset =  (i + get_method_params(method_name) + 2) * 4;
         }
         else
         {

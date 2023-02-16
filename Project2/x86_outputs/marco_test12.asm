@@ -27,7 +27,7 @@ my_main:
 	push dword 0
 	push dword [ebp-4]
 	call my_factorial
-	mov dword [ebp-8], eax
+	mov dword [esp+4], eax
 	pop dword ecx
 	jmp my_main_end
 my_main_end:
@@ -59,7 +59,7 @@ my_factorial:
 	sub eax, ebx
 	push dword eax
 	call my_factorial
-	mov dword [ebp-8], eax
+	mov dword [esp+4], eax
 	pop dword ecx
 	pop dword ebx
 	pop dword eax

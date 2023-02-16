@@ -28,7 +28,7 @@ my_main:
 	push dword 0
 	push dword [ebp-4]
 	call my_eulers
-	mov dword [ebp-12], eax
+	mov dword [esp+4], eax
 	pop dword ecx
 	pop dword eax
 	mov dword [ebp-8], eax

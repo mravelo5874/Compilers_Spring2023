@@ -33,7 +33,7 @@ my_main:
 	push dword [ebp-4]
 	push dword [ebp-8]
 	call my_addthemnums
-	mov dword [ebp-16], eax
+	mov dword [esp+8], eax
 	pop dword ecx
 	pop dword ecx
 	pop dword eax

@@ -70,7 +70,7 @@ my_method2:
 	push dword 0
 	push dword [ebp+8]
 	call my_method1
-	mov dword [ebp-8], eax
+	mov dword [esp+4], eax
 	pop dword ecx
 	pop dword eax
 	mov dword [ebp-4], eax
@@ -98,7 +98,7 @@ my_main:
 	push dword 5
 	push dword 6
 	call my_method2
-	mov dword [ebp-4], eax
+	mov dword [esp+8], eax
 	pop dword ecx
 	pop dword ecx
 	jmp my_main_end

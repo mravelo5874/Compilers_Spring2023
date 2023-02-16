@@ -66,7 +66,7 @@ my_main:
 	push dword 0
 	push dword 5
 	call my_method1
-	mov dword [ebp-4], eax
+	mov dword [esp+4], eax
 	pop dword ecx
 	jmp my_main_end
 my_main_end:

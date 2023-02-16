@@ -125,7 +125,7 @@ my_main:
 	push dword 2
 	push dword 4
 	call my_try_and
-	mov dword [ebp-12], eax
+	mov dword [esp+8], eax
 	pop dword ecx
 	pop dword ecx
 	pop dword eax
@@ -134,7 +134,7 @@ my_main:
 	push dword 1
 	push dword 3
 	call my_try_or
-	mov dword [ebp-12], eax
+	mov dword [esp+8], eax
 	pop dword ecx
 	pop dword ecx
 	pop dword eax
@@ -143,7 +143,7 @@ my_main:
 	push dword [ebp-4]
 	push dword [ebp-8]
 	call my_try_or
-	mov dword [ebp-12], eax
+	mov dword [esp+8], eax
 	pop dword ecx
 	pop dword ecx
 	jmp my_main_end

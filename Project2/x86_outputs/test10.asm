@@ -24,7 +24,7 @@ my_main:
 	push dword 0
 	push dword 17
 	call my_fibo
-	mov dword [ebp-8], eax
+	mov dword [esp+4], eax
 	pop dword ecx
 	pop dword eax
 	mov dword [ebp-4], eax
@@ -61,7 +61,7 @@ my_fibo:
 	sub eax, ebx
 	push dword eax
 	call my_fibo
-	mov dword [ebp-8], eax
+	mov dword [esp+4], eax
 	pop dword ecx
 	push dword 0
 	push dword [ebp+8]
@@ -71,7 +71,7 @@ my_fibo:
 	sub eax, ebx
 	push dword eax
 	call my_fibo
-	mov dword [ebp-8], eax
+	mov dword [esp+4], eax
 	pop dword ecx
 	pop dword ebx
 	pop dword eax

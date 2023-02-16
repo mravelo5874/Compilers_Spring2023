@@ -24,7 +24,7 @@ my_main:
 	push dword 10
 	push dword 20
 	call my_foo
-	mov dword [ebp-4], eax
+	mov dword [esp+8], eax
 	pop dword ecx
 	pop dword ecx
 	jmp my_main_end
@@ -41,7 +41,7 @@ my_foo:
 	push dword 0
 	push dword [ebp+8]
 	call my_bar
-	mov dword [ebp-8], eax
+	mov dword [esp+4], eax
 	pop dword ecx
 	pop dword eax
 	mov dword [ebp-4], eax

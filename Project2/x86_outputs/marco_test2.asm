@@ -27,7 +27,7 @@ my_main:
 	push dword 0
 	push dword [ebp-4]
 	call my_super_while
-	mov dword [ebp-8], eax
+	mov dword [esp+4], eax
 	pop dword ecx
 	pop dword eax
 	mov dword [ebp-4], eax
@@ -48,14 +48,14 @@ my_auto_label_23:
 	push dword 0
 	push dword [ebp+8]
 	call my_triple
-	mov dword [ebp-4], eax
+	mov dword [esp+4], eax
 	pop dword ecx
 	pop dword eax
 	mov dword [ebp+8], eax
 	push dword 0
 	push dword [ebp+8]
 	call my_half
-	mov dword [ebp-4], eax
+	mov dword [esp+4], eax
 	pop dword ecx
 	pop dword eax
 	mov dword [ebp+8], eax

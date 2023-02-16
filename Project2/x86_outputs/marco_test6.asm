@@ -28,7 +28,7 @@ my_main:
 	push dword 0
 	push dword [ebp-4]
 	call my_recursive
-	mov dword [ebp-12], eax
+	mov dword [esp+4], eax
 	pop dword ecx
 	pop dword eax
 	mov dword [ebp-8], eax
@@ -68,7 +68,7 @@ my_auto_label_30:
 	imul eax, ebx
 	push dword eax
 	call my_recursive
-	mov dword [ebp-8], eax
+	mov dword [esp+4], eax
 	pop dword ecx
 	pop dword eax
 	mov dword [ebp-4], eax

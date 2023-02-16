@@ -24,7 +24,7 @@ my_main:
 	push dword 9872934
 	push dword 809784
 	call my_gcd
-	mov dword [ebp-4], eax
+	mov dword [esp+8], eax
 	pop dword ecx
 	pop dword ecx
 	jmp my_main_end
