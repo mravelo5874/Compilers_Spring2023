@@ -1,0 +1,27 @@
+// expected result: 1066
+int main()
+{
+    int num = 2;
+    num = super_while(num);
+    return num;
+}
+
+int super_while(int i)
+{
+    while ((i < 999))
+    {
+        i = triple(i);
+        i = half(i);
+    }
+    return i;
+}
+
+int triple(int o)
+{
+    return (o*3);
+}
+
+int half(int l)
+{
+    return (l/2);
+}

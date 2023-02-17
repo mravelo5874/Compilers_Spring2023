@@ -80,8 +80,18 @@ my_auto_label_38:
 	push dword 0
 	pop dword ebx
 	pop dword eax
+
+        PRINT_DEC 4, ebx
+        NEWLINE
+        PRINT_DEC 4, eax
+        NEWLINE
+
 	cmp eax, ebx
 	pop dword eax
+
+        PRINT_DEC 4, eax
+        NEWLINE
+        
 	cmp eax, 0
 	je not_label_a1
 	push dword 0
