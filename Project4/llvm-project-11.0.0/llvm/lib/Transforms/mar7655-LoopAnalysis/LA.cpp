@@ -3,6 +3,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Analysis/LoopInfo.h"
+#include <assert.h>
 
 using namespace llvm;
 
@@ -24,10 +25,11 @@ namespace
 
         virtual bool runOnFunction(Function &F)
         {
+            // get all loops and function name
             LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
             std::string func_name = F.getName().str();
 
-            // iterate through every loop
+            // iterate through every loop to get loop data
             for (LoopInfo::iterator iter = LI.begin(), end = LI.end(); iter != end; ++iter)
             {
                 Loop *L = *iter;
@@ -47,8 +49,8 @@ namespace
             int num_sub_loops = 0;
             int num_blocks = blocks.size();
             int num_inst = 0;
-            int num_atomics = 0;
-            int num_branches = 0;
+            int num_atom = 0;
+            int num_branch = 0;
             
             // count branches, instructions, and atomics
             for (int i = 0; i < num_blocks; i++)
@@ -60,14 +62,15 @@ namespace
                     // instructions
                     num_inst++;
                     // branches
-                    if (isa<BranchInst>(iter) || isa<SwitchInst>(iter) || isa<IndirectBrInst>(iter)) num_branches++;
+                    if (isa<BranchInst>(iter) || isa<SwitchInst>(iter) || isa<IndirectBrInst>(iter)) num_branch++;
                     // atomics
-                    if (iter->isAtomic()) num_atomics++;
+                    if (iter->isAtomic()) num_atom++;
                 }
             }
             
             // recurse into sub loops
-            int inner_blocks, inner_branches = 0;
+            int inner_blocks = 0;
+            int inner_branches = 0;
             Loop::iterator iter, end;
             for (iter = sub_loops.begin(), end = sub_loops.end(); iter != end; ++iter)
             {
@@ -77,23 +80,31 @@ namespace
                 num_sub_loops++;
             }
 
+            // make sure inner_blocks is correctly calculated
+            assert (inner_blocks < num_blocks);
+
             // compute loop atributes
             std::string contains_sub_loops = (num_sub_loops == 0 ? "false" : "true");
-            num_blocks = num_blocks - inner_blocks;
-            num_branches = num_branches - inner_branches;
+            int my_blocks = num_blocks - inner_blocks;
+            int my_branches = num_branch - inner_branches;
+
+            // errs() << "blocks: " << num_blocks << ", ";
+            // errs() << "inner_blocks: " << inner_blocks << ", ";
+            // errs() << "my_blocks: " << my_blocks << ", \t";
 
             // print loop info
             errs() << loop_counter << ": ";
             errs() << "func=" << func_name << ", ";
             errs() << "depth=" << loop_depth << ", ";
             errs() << "subLoops=" << contains_sub_loops << ", ";
-            errs() << "BBs=" << num_blocks << ", ";
+            errs() << "BBs=" << my_blocks << ", ";
             errs() << "instrs=" << num_inst << ", ";
-            errs() << "atomics=" << num_atomics << ", ";
-            errs() << "branches=" << num_branches << "\n";
+            errs() << "atomics=" << num_atom << ", ";
+            errs() << "branches=" << my_branches << "\n";
             loop_counter++;
 
-            return std::make_pair(num_blocks + inner_blocks, num_branches + inner_branches);
+            // return blocks and branches
+            return std::make_pair(num_blocks, num_branch);
         }
     }; // end of struct
 } // end of namespace
